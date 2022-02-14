@@ -1,0 +1,7 @@
+{
+  "$schema": "../../node_modules/ng-packagr/ng-package.schema.json",
+  "dest": "../../dist/rx-ng-query",
+  "lib": {
+    "entryFile": "../rx-ng-query.main.ts"
+  }
+}

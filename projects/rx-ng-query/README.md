@@ -167,11 +167,11 @@ const storeInitiator: (...arg: any[]) => RxQueryOption[] = (apiService: ApiServi
 const storeFetchDependency = [ApiService]; // this will be injected as storeInit arguments
 
 imports: [
-  ApiService, // custom service
-  RxNgQueryModule.withInitStore<RootStoreState>(
-    storeInitiator,
-    storeFetchDependency
-  ),
+    ApiService, // custom service
+    RxNgQueryModule.withInitStore<RootStoreState>(
+      storeInitiator,
+      storeFetchDependency
+    ),
 ]
 
 // or if you don't have initial store just import RxNgQueryModule
@@ -207,7 +207,7 @@ constructor(private rxNgQueryStore: RxNgQueryStore < any >,
 export class HistoryApiService {
   constructor(private apiService: ApiService) {
   }
-  
+
   // prefetch for fetching with registration
   @RxQuery({key: 'history', initState: [], prefetch: {param: null}})
   fetchHistory() {
@@ -224,10 +224,10 @@ export class HistoryApiService {
   providers: [HistoryApiService],
 })
 export class SomeComponent {
-  constructor(private historyApiService: HistoryApiService) {
-    // you should inject inside the component
-    // otherwise it will not initiated.
-  }
+    constructor(private historyApiService: HistoryApiService) {
+        // you should inject inside the component
+        // otherwise it will not initiated.
+    }
 }
 
 ```
@@ -311,8 +311,8 @@ it provides methods to each store we declared.
 ## rxNgSuspense
 
 ### RxQueryStatus
-status(key) 로 해당 스트림을 얻을 수 있다.
-- data: returned data from query
+status(key) 로 해당 스트림을 얻을 수 있다. 
+- data: returned data from query 
 - ts: timestamp that updated (in case of error, it does not update the ts)
 - error: thrown error from query (it is reset on loading status)
 - loading: loading status

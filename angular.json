@@ -105,6 +105,68 @@
           }
         }
       }
+    },
+    "rx-ng-query": {
+      "projectType": "library",
+      "root": "projects/rx-ng-query",
+      "sourceRoot": "projects/rx-ng-query/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/rx-ng-query/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/rx-ng-query/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/rx-ng-query/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "projects/rx-ng-query/src/test.ts",
+            "tsConfig": "projects/rx-ng-query/tsconfig.spec.json",
+            "karmaConfig": "projects/rx-ng-query/karma.conf.js"
+          }
+        }
+      }
+    },
+    "rx-core-query": {
+      "projectType": "library",
+      "root": "projects/rx-core-query",
+      "sourceRoot": "projects/rx-core-query/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/rx-core-query/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/rx-core-query/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/rx-core-query/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "projects/rx-core-query/src/test.ts",
+            "tsConfig": "projects/rx-core-query/tsconfig.spec.json",
+            "karmaConfig": "projects/rx-core-query/karma.conf.js"
+          }
+        }
+      }
     }
   },
   "defaultProject": "rx-query"

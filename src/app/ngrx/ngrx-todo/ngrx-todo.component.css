@@ -1,0 +1,20 @@
+dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+div > dt {
+  font-weight: bold;
+  width: 100px;
+  flex: 0 0 auto;
+}
+div > dd {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+li {
+  margin: 10px 0;
+}
+a {
+  cursor: pointer;
+}
