@@ -1,6 +1,23 @@
 {
   "name": "rx-ng-query",
-  "version": "0.0.3",
+  "version": "0.0.4",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kellywoo/rx-query/tree/master/projects/rx-ng-query"
+  },
+  "keywords": [
+    "Rx",
+    "RxJS",
+    "ReactiveX",
+    "Angular",
+    "query",
+    "angular query",
+    "refetch",
+    "State Management",
+    "ES6",
+    "ES2015"
+  ],
+  "author": "Kelly Woo <kelly.kh.woo@gmail.com>",
   "peerDependencies": {
     "@angular/common": "^13.2.0",
     "@angular/core": "^13.2.0"
