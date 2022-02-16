@@ -8,9 +8,7 @@
     "declarationMap": true,
     "inlineSources": true,
     "types": [],
-    "paths": {
-      "rx-core-query": ["rx-core-query.main.ts"]
-    }
+    "paths": {}
   },
   "exclude": [
     "src/test.ts",

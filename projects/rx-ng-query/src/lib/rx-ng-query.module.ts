@@ -1,7 +1,7 @@
 import { InjectionToken, Injector, ModuleWithProviders, NgModule, Optional } from '@angular/core';
 import { RxNgQueryStore } from './rx-ng-query.store';
 import { RxNgSuspenseDirective } from './rx-ng-suspense.directive';
-import { RxQueryOption } from 'rx-core-query';
+import { RxQueryOption } from '../../../rx-core-query.main';
 
 const STORE = new RxNgQueryStore<any>();
 const StoreInitToken = new InjectionToken('@@@@::ng_query_init');

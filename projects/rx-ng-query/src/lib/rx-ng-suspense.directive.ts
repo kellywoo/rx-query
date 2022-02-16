@@ -7,7 +7,7 @@ import {
   TemplateRef,
   ViewContainerRef,
 } from '@angular/core';
-import { RxQueryStatus } from 'rx-core-query';
+import { RxQueryStatus } from '../../../rx-core-query.main';
 
 export type TemplateType = 'null' | 'loading' | 'content' | 'error';
 @Directive({

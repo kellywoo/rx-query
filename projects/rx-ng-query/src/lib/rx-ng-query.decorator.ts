@@ -1,6 +1,5 @@
 import { RxNgQueryModule } from './rx-ng-query.module';
-import { RxQueryOption, RxStoreOption, RxQueryOptionSchemed } from 'rx-core-query';
-import { Observable } from 'rxjs';
+import { RxQueryOption, RxStoreOption, RxQueryOptionSchemed } from '../../../rx-core-query.main';
 
 const INNER_DATA_KEY = Symbol();
 

@@ -10,7 +10,7 @@ import {
   RxQueryNotifier,
   RxState,
   RxQueryMutateFn,
-} from 'rx-core-query';
+} from '../../../rx-core-query.main';
 
 export interface RxNgState {
   [key: string]: any;
