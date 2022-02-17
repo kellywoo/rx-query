@@ -32,7 +32,7 @@ export class RxCache<A = any, B = any> {
   }
 
   isSameKey(cacheKey: any) {
-    return shallowEqualDepth(this.cacheKey, cacheKey, 2);
+    return shallowEqualDepth(this.cacheKey, cacheKey, 1);
   }
 
   prepareFetching() {
