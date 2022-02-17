@@ -4,7 +4,7 @@ export interface RxConst {
   defaultRetry: number;
   defaultRetryDelay: number;
   defaultInterval: number;
-  backgroundStaleTime: number;
+  staleModeDuration: number;
   minRefetchTime: number;
 }
 
@@ -18,7 +18,7 @@ export const getRxConstSettings = ((mutation?: Partial<RxConst>) => {
       defaultRetry: 2,
       defaultRetryDelay: 3,
       defaultInterval: 24 * 3600,
-      backgroundStaleTime: 300,
+      staleModeDuration: 300,
       minRefetchTime: 2,
     };
     if (mutation) {

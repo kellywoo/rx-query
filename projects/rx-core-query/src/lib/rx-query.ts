@@ -46,8 +46,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   private readonly refetchInterval: number;
   private readonly refetchOnReconnect: boolean;
   private readonly refetchOnEmerge: boolean;
-  private readonly backgroundStaleTime: number;
-  private readonly backgroundRefetch: boolean;
+  private readonly staleModeDuration: number;
+  private readonly refetchOnStaleMode: boolean;
   private readonly keepAlive: boolean;
   private readonly paramToCachingKey?: (p: any) => any;
 
@@ -57,7 +57,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
 
   private fetched = false;
   private refetchDisabled = false;
-  private isOnBackground: boolean = false;
+  private isOnStale: boolean = false;
   private refetchSbuscription?: Subscription;
   private latestParam?: B;
   private lastSuccessTime = 0;
@@ -79,8 +79,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       refetchOnReconnect,
       refetchOnEmerge,
       refetchInterval,
-      backgroundStaleTime,
-      backgroundRefetch,
+      staleModeDuration,
+      refetchOnStaleMode,
       caching,
       keepAlive,
       paramToCachingKey,
@@ -93,14 +93,14 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.refetchInterval = refetchInterval * 1000;
     this.retry = retry;
     this.retryDelay = retryDelay * 1000;
-    this.backgroundStaleTime = backgroundStaleTime * 1000;
-    this.backgroundRefetch = backgroundRefetch;
+    this.staleModeDuration = staleModeDuration * 1000;
+    this.refetchOnStaleMode = refetchOnStaleMode;
     this.refetchOnReconnect = refetchOnReconnect;
     this.refetchOnEmerge = refetchOnEmerge;
     this.keepAlive = keepAlive;
     this.isEqual = isEqual;
     this.paramToCachingKey = paramToCachingKey;
-    this.subscribeBackgroundMode();
+    this.subscribeStaleMode();
     this.cacheState =
       this.keepAlive && cacheState
         ? cacheState
@@ -114,7 +114,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     }
   }
 
-  private subscribeBackgroundMode() {
+  private subscribeStaleMode() {
     combineLatest([
       merge(of(document.visibilityState === 'visible'), this.notifiers.visibilityChange$),
       merge(of(navigator.onLine), this.notifiers.online$),
@@ -126,15 +126,15 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         distinctUntilChanged(),
         takeUntil(this.destroy$),
       )
-      .subscribe((isOnBackground) => {
-        this.isOnBackground = isOnBackground;
-        // last resort for failed refetch by background mode.
+      .subscribe((isOnStale) => {
+        this.isOnStale = isOnStale;
+        // last resort for failed refetch when no refetch strategy is on.
         if (
-          !this.isOnBackground &&
-          !this.backgroundRefetch &&
+          !this.isOnStale &&
+          !this.refetchOnStaleMode &&
           !this.refetchOnEmerge &&
           !this.refetchOnReconnect &&
-          this.lastSuccessTime + this.refetchInterval < Date.now()
+          this.refetchInterval && this.lastSuccessTime + this.refetchInterval < Date.now()
         ) {
           this.refetch();
         }
@@ -155,7 +155,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
               this.lastSuccessTime = Date.now();
             }),
             catchError((err, caught) => {
-              if (this.isOnBackground) {
+              if (this.isOnStale) {
                 cache.onError(err, refetch);
                 return EMPTY;
               }
@@ -176,7 +176,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.refetchInterval$
       .pipe(
         switchMap((intervalTime) => {
-          return intervalTime === -1 ? EMPTY : timer(intervalTime);
+          return intervalTime <= 0 ? EMPTY : timer(intervalTime);
         }),
         takeUntil(this.destroy$),
       )
@@ -184,7 +184,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         if (this.refetchDisabled) {
           return;
         }
-        if (!this.isOnBackground || this.backgroundRefetch) {
+        if (!this.isOnStale || this.refetchOnStaleMode) {
           this.refetch();
         }
       });
@@ -198,9 +198,9 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     if (
       param &&
       typeof param === 'object' &&
-      Object.prototype.hasOwnProperty.call(param, 'rxQueryHashKey')
+      Object.prototype.hasOwnProperty.call(param, 'rxQueryCachingKey')
     ) {
-      return param.rxQueryHashKey;
+      return param.rxQueryCachingKey;
     }
 
     if (this.paramToCachingKey) {
@@ -211,7 +211,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
 
   private getDefaultOption(options: RxQueryOption<A, B>): RxQueryOptionSchemed<A, B> {
     const {
-      backgroundStaleTime,
+      staleModeDuration,
       defaultRetryDelay,
       defaultRetry,
       defaultCaching,
@@ -226,14 +226,14 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       prefetch: options.prefetch || null,
       refetchOnEmerge: options.refetchOnEmerge || false,
       refetchOnReconnect: options.refetchOnReconnect || false,
-      backgroundStaleTime: options.backgroundStaleTime ?? backgroundStaleTime,
+      staleModeDuration: options.staleModeDuration ?? staleModeDuration,
       retry: options.retry ?? defaultRetry,
       retryDelay: options.retryDelay ?? defaultRetryDelay,
       isEqual: options.isEqual || shallowEqualDepth,
       keepAlive: options.keepAlive || false,
       paramToCachingKey: options.paramToCachingKey,
-      backgroundRefetch: options.backgroundRefetch || false,
-      refetchInterval: Math.max(options.refetchInterval || defaultInterval, minRefetchTime), // does not take 0
+      refetchOnStaleMode: options.refetchOnStaleMode || false,
+      refetchInterval: options.refetchInterval === 0 ? 0 : Math.max(options.refetchInterval || defaultInterval, minRefetchTime), // does not take 0
       caching: Math.min(Math.max(options.caching || defaultCaching, 0), maxCaching),
     };
   }
@@ -285,7 +285,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
               return true;
             }
             const now = Date.now();
-            return now - startTime > this.backgroundStaleTime;
+            return now - startTime > this.staleModeDuration;
           }
           return false;
         }),

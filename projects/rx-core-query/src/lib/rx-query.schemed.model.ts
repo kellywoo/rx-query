@@ -23,8 +23,8 @@ export interface RxQueryOptionSchemed<A, B>
   keepAlive: boolean;
   caching: number;
   paramToCachingKey?: (p: any) => any;
-  backgroundStaleTime: number;
-  backgroundRefetch: boolean;
+  staleModeDuration: number;
+  refetchOnStaleMode: boolean;
 }
 
 export interface RxQueryNotifier {

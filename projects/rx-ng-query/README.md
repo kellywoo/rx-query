@@ -1,4 +1,5 @@
 # RxQuery
+
 It is built with rxjs and designed easy to use. queryStore is Singleton, only one exists throughout the app.
 
 # Work in progress
@@ -14,7 +15,9 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 [Sample Test Url: https://stackblitz.com/edit/angular-ivy-vxsmmj?file=src/app/app.component.ts](https://stackblitz.com/edit/angular-ivy-vxsmmj?file=src/app/app.component.ts)
 
 ## RxQueryOption
+
 ### StoreOptions (For RxStore & RxQuery)
+
 <table width="100%">
 <thead>
 <tr>
@@ -69,6 +72,7 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 </table>
 
 ### Refetch & Cache Strategy (For RxQuery only)
+
 <table width="100%">
 <thead>
 <tr>
@@ -100,19 +104,23 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 <tr>
 <th>refetchInterval</th>
 <td>number</td>
-<td><b>defaultValue: 24 * 3600 (1 day) </b><br />min value is 2(2seconds)<br />interval calls. restart if query called and successed. unit is second</td>
+<td><b>defaultValue: 24 * 3600 (1 day) </b><br />
+0 for disable interval<br />
+min value is 2(2seconds)<br />interval calls. restart if query called and successed. unit is second</td>
 </tr>
 
 <tr>
-<th>backgroundStaleTime</th>
+<th>staleModeDuration</th>
 <td>number</td>
-<td><b>defaultValue: 300 (5 minutes) </b><br />duration to perform event of merging refetchOnReconnect & refetchOnEmerge and only if backgroundStaleTime has passed from last fetch, refetch works. unit is second(5 === 5second)</td>
+<td>
+<b>defaultValue: 300 (5 minutes) </b><br />
+duration to perform event of merging refetchOnReconnect & refetchOnEmerge and only if staleModeDuration has passed from last fetch, refetch works. unit is second(5 === 5second)</td>
 </tr>
 
 <tr>
-<th>backgroundRefetch</th>
+<th>refetchOnStaleMode</th>
 <td>boolean</td>
-<td><b>defaultValue: false </b><br />by default, refetch action by refetchInterval does not work when it is on background, with true, it ignores default and perform refetch</td>
+<td><b>defaultValue: false </b><br />by default, refetch action by refetchInterval does not work when it is on the stale mode, with true, it ignores default and perform refetch</td>
 </tr>
 
 <tr>
@@ -136,19 +144,18 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 
 <tr>
 <td colspan="3">
-  you can add rxQueryHashKey key to param for query and it has more priority to get hash.
+  you can add rxQueryCachingKey key to param for query and it has more priority to get hash.
 </td>
 </tr>
 </tbody>
 </table>
 
-
 # staticStore
+
 inside store has 2 classes
 one for RxQuery, one for RxStore
 RxQuery is to use refetch & cache strategy
 RxStore is to use storage for cache and you can still transform by query option
-
 
 ## Module Import
 
@@ -232,8 +239,10 @@ export class SomeComponent {
 ```
 
 ## RxNgQueryStore
+
 RxNgQueryStore is the manager and the bridge to each store.
 it provides methods to each store we declared.
+
 <table>
 <thead>
 <tr>
@@ -311,20 +320,20 @@ it provides methods to each store we declared.
 </tbody>
 </table>
 
-
-
-
 ## rxNgSuspense
 
 ### RxQueryStatus
-status(key) 로 해당 스트림을 얻을 수 있다. 
-- data: returned data from query 
+
+status(key) 로 해당 스트림을 얻을 수 있다.
+
+- data: returned data from query
 - ts: timestamp that updated (in case of error, it does not update the ts)
 - error: thrown error from query (it is reset on loading status)
 - loading: loading status
 - untrustedData: if data is same as initdata or error on fetch (in case of refetch, it keeps the current one)
 
 ### Crate Template with ng-template
+
 ```html
 // in template
 <div>
@@ -359,14 +368,13 @@ defaultTemplateSort(status: RxQueryStatus<any>){
     if (loading) {
       return 'loading';
     }
-    
+
     return data ? 'content' : 'null';
   }
-  
+
   if (data) {
     return 'content';
   }
   return 'null';
 }
 ```
-

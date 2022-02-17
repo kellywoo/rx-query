@@ -64,38 +64,43 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
    **/
   prefetch?: RxQueryParam<B> | null;
   /**
-   * @description refetch on reconnect(if the backgroundstaletime has passed)
+   * @description refetch on reconnect(if the staleModeDuration has passed)
    **/
   refetchOnReconnect?: boolean;
   /**
-   * @description refetch on visibility changes(if the backgroundstaletime has passed)
+   * @description refetch on visibility changes(if the staleModeDuration has passed)
    **/
   refetchOnEmerge?: boolean;
   /**
    * @description interval for refetch, if query performs before next routine, it reset the timer
    **/
   refetchInterval?: number;
+
   /**
-   * @description on destroy the state and cache is kept and can be used for next time
+   * @description automatically stops refetch on staleMode(window visibility hidden & offline)
+   * with true, it will refetch in staleMode
    **/
-  keepAlive?: boolean;
+  refetchOnStaleMode?: boolean;
+
+  /**
+   * @description refetch or reconnect debounce time
+   **/
+  staleModeDuration?: number;
+
   /**
    * @description to distinguish unique cache, it takes param sent to fetch as argument
    **/
   paramToCachingKey?: (p: any) => any;
+
   /**
    * @description how many cache(distinguished by cachekey) can be saved. default is 0.
    **/
   caching?: number;
+
   /**
-   * @description refetch or reconnect debounce time
+   * @description keep the cache after destroying and can be used for next time
    **/
-  backgroundStaleTime?: number;
-  /**
-   * @description automatically stops refetch on background(window visibility hidden) & offline
-   * with true, it will refetch in background
-   **/
-  backgroundRefetch?: boolean;
+  keepAlive?: boolean;
 }
 
 export type RxQueryParam<B> = { param?: B; refetch?: boolean };

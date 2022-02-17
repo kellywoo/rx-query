@@ -14,7 +14,7 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 [Sample Test Url: https://stackblitz.com/edit/angular-ivy-vxsmmj?file=src/app/app.component.ts](https://stackblitz.com/edit/angular-ivy-vxsmmj?file=src/app/app.component.ts)
 
 ## RxQueryOption
-### StoreOptions
+### StoreOptions (For RxStore & RxQuery)
 <table width="100%">
 <thead>
 <tr>
@@ -49,6 +49,18 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 </tr>
 
 <tr>
+<th>retry</th>
+<td>number</td>
+<td><b>defaultValue: 2 </b><br />with an error, how many times more tries the query.</td>
+</tr>
+
+<tr>
+<th>retryDelay</th>
+<td>number</td>
+<td><b>defaultValue: 3 (3seconds) </b><br />delay between retries</td>
+</tr>
+
+<tr>
 <th>staticStore</th>
 <td>boolean</td>
 <td><b>defaultValue: false</b><br />ignore all refetch strategy</td>
@@ -56,7 +68,7 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 </tbody>
 </table>
 
-### Refetch & Cache Strategy
+### Refetch & Cache Strategy (For RxQuery only)
 <table width="100%">
 <thead>
 <tr>
@@ -91,29 +103,16 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 <td><b>defaultValue: 24 * 3600 (1 day) </b><br />min value is 2(2seconds)<br />interval calls. restart if query called and successed. unit is second</td>
 </tr>
 
-
 <tr>
-<th>retry</th>
+<th>staleModeDuration</th>
 <td>number</td>
-<td><b>defaultValue: 2 </b><br />with an error, how many times more tries the query.</td>
+<td><b>defaultValue: 300 (5 minutes) </b><br />duration to perform event of merging refetchOnReconnect & refetchOnEmerge and only if staleModeDuration has passed from last fetch, refetch works. unit is second(5 === 5second)</td>
 </tr>
 
 <tr>
-<th>retryDelay</th>
-<td>number</td>
-<td><b>defaultValue: 3 (3seconds) </b><br />delay between retries</td>
-</tr>
-
-<tr>
-<th>backgroundStaleTime</th>
-<td>number</td>
-<td><b>defaultValue: 300 (5 minutes) </b><br />duration to perform event of merging refetchOnReconnect & refetchOnEmerge and only if backgroundStaleTime has passed from last fetch, refetch works. unit is second(5 === 5second)</td>
-</tr>
-
-<tr>
-<th>backgroundRefetch</th>
+<th>refetchOnStaleMode</th>
 <td>boolean</td>
-<td><b>defaultValue: false </b><br />by default, refetch action by refetchInterval does not work when it is on background, with true, it ignores default and perform refetch</td>
+<td><b>defaultValue: false </b><br />by default, refetch action by refetchInterval does not work when it is on the stale mode, with true, it ignores default and perform refetch</td>
 </tr>
 
 <tr>
@@ -137,7 +136,7 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 
 <tr>
 <td colspan="3">
-  you can add rxQueryHashKey key to param for query and it has more priority to get hash.
+  you can add rxQueryCachingKey key to param for query and it has more priority to get hash.
 </td>
 </tr>
 </tbody>
@@ -167,11 +166,11 @@ const storeInitiator: (...arg: any[]) => RxQueryOption[] = (apiService: ApiServi
 const storeFetchDependency = [ApiService]; // this will be injected as storeInit arguments
 
 imports: [
-  ApiService, // custom service
-  RxNgQueryModule.withInitStore<RootStoreState>(
-    storeInitiator,
-    storeFetchDependency
-  ),
+    ApiService, // custom service
+    RxNgQueryModule.withInitStore<RootStoreState>(
+      storeInitiator,
+      storeFetchDependency
+    ),
 ]
 
 // or if you don't have initial store just import RxNgQueryModule
@@ -207,7 +206,7 @@ constructor(private rxNgQueryStore: RxNgQueryStore < any >,
 export class HistoryApiService {
   constructor(private apiService: ApiService) {
   }
-  
+
   // prefetch for fetching with registration
   @RxQuery({key: 'history', initState: [], prefetch: {param: null}})
   fetchHistory() {
@@ -224,10 +223,10 @@ export class HistoryApiService {
   providers: [HistoryApiService],
 })
 export class SomeComponent {
-  constructor(private historyApiService: HistoryApiService) {
-    // you should inject inside the component
-    // otherwise it will not initiated.
-  }
+    constructor(private historyApiService: HistoryApiService) {
+        // you should inject inside the component
+        // otherwise it will not initiated.
+    }
 }
 
 ```
@@ -239,67 +238,74 @@ it provides methods to each store we declared.
 <thead>
 <tr>
 <th>method</th>
+<th>supports</th>
 <th>description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <th>registerStore(options: RxQueryOption):void</th>
+<td>both</td>
 <td>create store</td>
 </tr>
 
 <tr>
 <th>unregisterStore(key: string):void</th>
+<td>both</td>
 <td>destroy store, if keepAlive is true, the state can be cached</td>
 </tr>
 
 <tr>
 <th>has(key: string):boolean</th>
+<td>both</td>
 <td>check for store existance</td>
 </tr>
 
 <tr>
-<th>unregisterStore(key: string):void</th>
-<td>destroy store, if keepAlive is true, the state can be cached</td>
-</tr>
-
-<tr>
 <th>getInitData(key: string):any</th>
+<td>both</td>
 <td>get the initdata of the store you inject on registration</td>
 </tr>
 
 <tr>
 <th>reset(key: string):void</th>
+<td>both</td>
 <td>reset the store, remove cache & all the flag to the start state</td>
 </tr>
 
 <tr>
 <th>select(key: string, selector?:(s: any) => any):Observable&lt;RxQueryStatus['data']&gt;</th>
+<td>both</td>
 <td>select from status.data, selector is mapping function</td>
 </tr>
 
 <tr>
 <th>status(key: string):Observable&lt;RxQueryStatus&gt;</th>
+<td>both</td>
 <td>select from status.data, selector is mapping function</td>
 </tr>
 
 <tr>
 <th>mutate(key: string, fn:&lt;RxQueryStatus['data']&gt;) => &lt;RxQueryStatus['data']&gt;):boolean</th>
+<td>both</td>
 <td>use to manually mutate the data, if the query is executing, it can be denied and the result of success returned</td>
 </tr>
 
 <tr>
 <th>fetch(key: string, param: any) => void</th>
+<td>both</td>
 <td>fetch with new param</td>
 </tr>
 
 <tr>
 <th>refetch(key: string) => void</th>
+<td>RxQuery only</td>
 <td>refetch with latest param, it can reset the refetchInterval</td>
 </tr>
 
 <tr>
 <th>disableRefetch(key: string, disabled: boolean) => void</th>
+<td>RxQuery only</td>
 <td>pause refetch or not</td>
 </tr>
 </tbody>
