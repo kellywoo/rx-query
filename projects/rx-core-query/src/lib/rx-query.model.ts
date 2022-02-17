@@ -44,6 +44,14 @@ export interface RxStoreOption<A, B> {
    * @description query for fetch or any asynchronous operation
    **/
   query?: null | ((s?: B) => Observable<A>);
+  /**
+   * @description retry times for error
+   **/
+  retry?: number;
+  /**
+   * @description delay time for retry
+   **/
+  retryDelay?: number;
 }
 
 export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
@@ -67,14 +75,6 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
    * @description interval for refetch, if query performs before next routine, it reset the timer
    **/
   refetchInterval?: number;
-  /**
-   * @description retry times for error
-   **/
-  retry?: number;
-  /**
-   * @description delay time for retry
-   **/
-  retryDelay?: number;
   /**
    * @description on destroy the state and cache is kept and can be used for next time
    **/

@@ -4,24 +4,27 @@ import {
   distinctUntilChanged,
   EMPTY,
   map,
-  merge,
   Observable,
   of,
   Subject,
   switchMap,
   tap,
+  timer,
 } from 'rxjs';
 import { RxQueryMutateFn, RxQueryOption, RxQueryStatus } from './rx-query.model';
 import { RxQueryNotifier, RxStoreOptionSchemed } from './rx-query.schemed.model';
-import { shallowEqualDepth } from './rx-query.util';
+import { deepEqual, shallowEqualDepth } from './rx-query.util';
+import { getRxConstSettings, RxConst } from './rx-const';
 
 export abstract class RxStoreAbstract<A, B> {
   protected abstract readonly key: string;
   protected abstract readonly initState: A;
+  protected abstract readonly retry: number;
+  protected abstract readonly retryDelay: number;
   protected abstract isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected unSupportedError = (name: string) => {
     return new Error(`not supporting method for rxstore: ${name}`);
-  }
+  };
 
   public readonly getInitData = () => {
     return this.initState;
@@ -41,43 +44,59 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
   protected readonly state$: BehaviorSubject<RxQueryStatus<A>>;
   protected readonly key: string;
   protected readonly initState: A;
+  protected readonly retry: number;
+  protected readonly retryDelay: number;
   protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected readonly query: RxStoreOptionSchemed<A, B>['query'];
+  private RX_CONST: RxConst;
 
   constructor(options: RxQueryOption<A, B>, private notifiers?: RxQueryNotifier) {
     super();
-    const { initState, key, query, isEqual } = this.getDefaultOption(options);
+    this.RX_CONST = getRxConstSettings();
+    const { initState, key, query, isEqual, retry, retryDelay } = this.getDefaultOption(options);
     this.key = key;
     this.initState = initState;
     this.isEqual = isEqual;
     this.query = query;
+    this.retry = retry;
+    this.retryDelay = retryDelay;
     const state: RxQueryStatus<A> = {
       data: this.initState,
       ts: Date.now(),
       error: null,
       loading: false,
+      untrustedData: true,
     };
     this.state$ = new BehaviorSubject(state);
     this.trigger$
       .pipe(
         switchMap(({ param }: any) => {
+          let retryTimes = this.retry;
+          this.state$.next({ ...this.state$.getValue(), loading: false, untrustedData: true });
           return this.query(param).pipe(
             tap((res) => {
+              const state = this.state$.getValue();
               this.state$.next({
                 ...this.state$.getValue(),
-                data: res,
+                data: deepEqual(res, state.data) ? state.data : res,
                 loading: false,
                 ts: Date.now(),
                 error: null,
+                untrustedData: false,
               });
             }),
-            catchError((err) => {
-              this.state$.next({
-                ...this.state$.getValue(),
-                error: err,
-                ts: Date.now(),
-              });
-              return merge(EMPTY, this.trigger$);
+            catchError((err, caught) => {
+              if (retryTimes > 0) {
+                retryTimes--;
+                return timer(this.retryDelay).pipe(switchMap(() => caught));
+              } else {
+                this.state$.next({
+                  ...this.state$.getValue(),
+                  error: err,
+                  untrustedData: true,
+                });
+                return EMPTY;
+              }
             }),
           );
         }),
@@ -90,6 +109,8 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
       key: options.key,
       initState: options.initState,
       isEqual: options.isEqual || shallowEqualDepth,
+      retry: options.retry || this.RX_CONST.defaultRetry,
+      retryDelay: options.retryDelay || this.RX_CONST.defaultRetryDelay,
       query: options.query || ((a?: B) => of(a as unknown as A)),
     };
   }
@@ -112,10 +133,6 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     this.trigger$.next({ param: payload });
   };
 
-  public readonly refetch = () => {
-    return this.unSupportedError('refetch') as never;
-  };
-
   public readonly reset = () => {
     this.state$.next({
       data: this.initState,
@@ -127,11 +144,14 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
 
   public readonly mutate = (payload: RxQueryMutateFn<A>) => {
     const state = this.state$.getValue();
+    if (state.loading || state.untrustedData) {
+      return false;
+    }
     // before update set should be called, initstate same as state means set hasn't been done yet.
     const mutated = (payload as RxQueryMutateFn<A>)(state.data);
-    if (state.data !== mutated) {
+    if (!shallowEqualDepth(mutated, state.data, 1)) {
       this.state$.next({
-        ...(state || null),
+        ...state,
         data: mutated,
       });
     }
@@ -144,6 +164,10 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     if (this.notifiers?.destroy$) {
       this.notifiers.destroy$.next(this.key);
     }
+  };
+
+  public readonly refetch = () => {
+    return this.unSupportedError('refetch') as never;
   };
 
   public disableRefetch = (disable: boolean) => {

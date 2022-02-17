@@ -30,18 +30,7 @@ import { RxStoreAbstract } from './rx-store';
 import { shallowEqualDepth } from './rx-query.util';
 import { INIT_CACHE_KEY, RxState } from './rx-state';
 import { RxCache } from './rx-cache';
-
-const MAX_CACHING = 50;
-const DEFAULT_CACHING = 0;
-const DEFAULT_RETRY = 2;
-const DEFAULT_RETRY_DELAY = 3;
-const DEFAULT_INTERVAL = 24 * 3600;
-
-const STALE_TIME = 300;
-const MIN_REFETCH_INTERVAL = 2;
-
-// const STALE_TIME = 30;
-// const MIN_REFETCH_INTERVAL = 30;
+import { getRxConstSettings, RxConst } from './rx-const';
 
 export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   protected readonly trigger$: Subject<{ refetch?: boolean; cache: RxCache; param?: B }> =
@@ -50,10 +39,10 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   protected readonly initState: A;
   protected readonly query: RxStoreOptionSchemed<A, B>['query'];
   protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
+  protected readonly retry: number;
+  protected readonly retryDelay: number;
 
   private readonly refetchInterval: number;
-  private readonly retry: number;
-  private readonly retryDelay: number;
   private readonly refetchOnReconnect: boolean;
   private readonly refetchOnEmerge: boolean;
   private readonly backgroundStaleTime: number;
@@ -71,6 +60,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   private refetchSbuscription?: Subscription;
   private latestParam?: B;
   private lastSuccessTime = 0;
+  private RX_CONST: RxConst;
 
   constructor(
     options: RxQueryOption<A, B>,
@@ -78,6 +68,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     cacheState?: RxState,
   ) {
     super();
+    this.RX_CONST = getRxConstSettings();
     const {
       prefetch,
       initState,
@@ -112,8 +103,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.cacheState =
       this.keepAlive && cacheState
         ? cacheState
-        : new RxState<A, B>({ max: caching, min: DEFAULT_CACHING }, this.initState);
-
+        : new RxState<A, B>({ max: caching, min: this.RX_CONST.defaultCaching }, this.initState);
     if (this.cacheState === cacheState) {
       this.cacheState.restart();
     }
@@ -200,7 +190,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   }
 
   private getCacheKey(param?: any) {
-    if (this.cacheState.max === DEFAULT_CACHING) {
+    if (this.cacheState.max === 0) {
       return INIT_CACHE_KEY;
     }
 
@@ -219,6 +209,15 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   }
 
   private getDefaultOption(options: RxQueryOption<A, B>): RxQueryOptionSchemed<A, B> {
+    const {
+      backgroundStaleTime,
+      defaultRetryDelay,
+      defaultRetry,
+      defaultCaching,
+      defaultInterval,
+      minRefetchTime,
+      maxCaching,
+    } = this.RX_CONST;
     return {
       key: options.key,
       query: options.query || ((a?: B) => of(a as unknown as A)),
@@ -226,15 +225,15 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       prefetch: options.prefetch || null,
       refetchOnEmerge: options.refetchOnEmerge || false,
       refetchOnReconnect: options.refetchOnReconnect || false,
-      backgroundStaleTime: options.backgroundStaleTime ?? STALE_TIME,
-      retry: options.retry ?? DEFAULT_RETRY,
-      retryDelay: options.retryDelay ?? DEFAULT_RETRY_DELAY,
+      backgroundStaleTime: options.backgroundStaleTime ?? backgroundStaleTime,
+      retry: options.retry ?? defaultRetry,
+      retryDelay: options.retryDelay ?? defaultRetryDelay,
       isEqual: options.isEqual || shallowEqualDepth,
       keepAlive: options.keepAlive || false,
       paramToCachingKey: options.paramToCachingKey,
       backgroundRefetch: options.backgroundRefetch || false,
-      refetchInterval: Math.max(options.refetchInterval || DEFAULT_INTERVAL, MIN_REFETCH_INTERVAL), // does not take 0
-      caching: Math.min(Math.max(options.caching || DEFAULT_CACHING, DEFAULT_CACHING), MAX_CACHING),
+      refetchInterval: Math.max(options.refetchInterval || defaultInterval, minRefetchTime), // does not take 0
+      caching: Math.min(Math.max(options.caching || defaultCaching, 0), maxCaching),
     };
   }
 
