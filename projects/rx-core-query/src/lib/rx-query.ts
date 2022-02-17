@@ -10,6 +10,7 @@ import {
   merge,
   Observable,
   of,
+  scan,
   skip,
   Subject,
   Subscription,
@@ -263,17 +264,28 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         map<[boolean, boolean], boolean>(([visibility, online]) => {
           return visibility && online;
         }),
-        delay(0),
         distinctUntilChanged(),
+        scan<boolean, { startTime: number; reconnectedOrEmerge: boolean }, null>(
+          (p, reconnectedOrEmerge) => {
+            if (!p) {
+              return { startTime: Date.now(), reconnectedOrEmerge: false };
+            }
+            return {
+              reconnectedOrEmerge,
+              startTime: reconnectedOrEmerge ? p.startTime! : Date.now(),
+            };
+          },
+          null,
+        ),
         withLatestFrom(this.cacheState.getState().pipe(take(1))),
-        filter(([reconnectedOrEmerge, state]) => {
+        filter(([{ reconnectedOrEmerge, startTime }, state]) => {
           if (reconnectedOrEmerge) {
-            if (state.untrustedData) {
+            if (state.untrustedData && !state.loading) {
               // previous fetch must have failed so prepare it.
               return true;
             }
             const now = Date.now();
-            return now - state.ts > this.backgroundStaleTime;
+            return now - startTime > this.backgroundStaleTime;
           }
           return false;
         }),
