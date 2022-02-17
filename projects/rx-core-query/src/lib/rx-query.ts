@@ -42,6 +42,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected readonly retry: number;
   protected readonly retryDelay: number;
+  protected readonly RX_CONST: RxConst;
 
   private readonly refetchInterval: number;
   private readonly refetchOnReconnect: boolean;
@@ -61,7 +62,6 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   private refetchSbuscription?: Subscription;
   private latestParam?: B;
   private lastSuccessTime = 0;
-  private RX_CONST: RxConst;
 
   constructor(
     options: RxQueryOption<A, B>,

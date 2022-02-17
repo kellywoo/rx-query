@@ -21,7 +21,8 @@ export abstract class RxStoreAbstract<A, B> {
   protected abstract readonly initState: A;
   protected abstract readonly retry: number;
   protected abstract readonly retryDelay: number;
-  protected abstract isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
+  protected abstract readonly RX_CONST: RxConst;
+  protected abstract readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected unSupportedError = (name: string) => {
     return new Error(`not supporting method for rxstore: ${name}`);
   };
@@ -48,7 +49,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
   protected readonly retryDelay: number;
   protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected readonly query: RxStoreOptionSchemed<A, B>['query'];
-  private RX_CONST: RxConst;
+  protected readonly RX_CONST: RxConst;
 
   constructor(options: RxQueryOption<A, B>, private notifiers?: RxQueryNotifier) {
     super();
