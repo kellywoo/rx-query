@@ -12,11 +12,11 @@ export interface RxStoreOptionSchemed<A, B = A> {
   retry: number;
   retryDelay: number;
   query: (s?: B) => Observable<A>;
+  prefetch?: RxQueryParam<B> | null;
 }
 
 export interface RxQueryOptionSchemed<A, B>
   extends Omit<RxStoreOptionSchemed<A, B>, 'isStaticStore'> {
-  prefetch?: RxQueryParam<B> | null;
   refetchOnReconnect: boolean;
   refetchOnEmerge: boolean;
   refetchInterval: number;

@@ -51,12 +51,10 @@ export class RxCache<A = any, B = any> {
     this.notifyChange();
   }
 
-  onError(err: Error, refetch?: boolean) {
+  onError(err: Error) {
     this.loading = false;
     this.error = err;
-    if (!refetch) {
-      this.untrustedData = true;
-    }
+    this.untrustedData = true;
     this.notifyChange();
   }
 

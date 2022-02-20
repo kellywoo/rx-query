@@ -46,6 +46,12 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 </tr>
 
 <tr>
+<th>prefetch</th>
+<td>{param: any}</td>
+<td><b>defaultValue: null </b><br />perform fetch with registration, the data prop goes to fetch argument</td>
+</tr>
+
+<tr>
 <th>isEqual</th>
 <td>function (a:any, b:any):boolean</td>
 <td><b>defaultValue: shallowEqual(with 2 deps)</b><br />fn for distinctUntilChange for cache</td>
@@ -83,11 +89,6 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 </thead>
 <tbody>
 
-<tr>
-<th>prefetch</th>
-<td>{param: any}</td>
-<td><b>defaultValue: null </b><br />perform fetch with registration, the data prop goes to fetch argument</td>
-</tr>
 
 <tr>
 <th>refetchOnReconnect</th>
@@ -159,6 +160,7 @@ RxStore is to use storage for cache and you can still transform by query option
 
 ## Module Import
 
+<!-- prettier-ignore-start -->
 ```typescript
 
 import { RxNgQueryModule } from 'rx-ng-query';
@@ -307,9 +309,9 @@ it provides methods to each store we declared.
 </tr>
 
 <tr>
-<th>refetch(key: string) => void</th>
+<th>reload(key: string) => void</th>
 <td>RxQuery only</td>
-<td>refetch with latest param, it can reset the refetchInterval</td>
+<td>fetch with latest param, internal refetch does not set loading or error flag, but it does.</td>
 </tr>
 
 <tr>
@@ -324,7 +326,7 @@ it provides methods to each store we declared.
 
 ### RxQueryStatus
 
-status(key) 로 해당 스트림을 얻을 수 있다.
+status(key) gives you the stream with the following data.
 
 - data: returned data from query
 - ts: timestamp that updated (in case of error, it does not update the ts)
@@ -378,3 +380,5 @@ defaultTemplateSort(status: RxQueryStatus<any>){
   return 'null';
 }
 ```
+
+<!-- prettier-ignore-end-->

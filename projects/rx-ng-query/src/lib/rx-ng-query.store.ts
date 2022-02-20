@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { distinctUntilChanged, fromEvent, map, merge, Observable, of, share, Subject } from 'rxjs';
+import { distinctUntilChanged, fromEvent, map, merge, Observable, share, Subject } from 'rxjs';
 import {
   RxQuery,
   RxQueryOption,
@@ -45,7 +45,7 @@ export class RxNgQueryStore<A extends RxNgState> {
     this.notifiers.destroy$!.subscribe((key) => {
       const store = this.state[key];
       if (store) {
-        const cache = (store as RxQuery<any>).getKeepAlivedState?.();
+        const cache = store.getKeepAlivedState();
         if (cache) {
           this.caches[key as keyof A] = cache;
         } else {
@@ -68,10 +68,9 @@ export class RxNgQueryStore<A extends RxNgState> {
       return;
     }
     const cache = this.caches[key];
-    const store = options.staticStore
+    this.state[key] = options.staticStore
       ? new RxStore(options, this.notifiers)
       : new RxQuery(options, this.notifiers, cache);
-    this.state[key] = store;
   }
 
   private getStore(key: keyof A) {
@@ -79,10 +78,6 @@ export class RxNgQueryStore<A extends RxNgState> {
       return this.state[key] as RxStoreAbstract<any, any>;
     }
     throw Error(`the store of key(${key}) seems not existing.`) as never;
-  }
-
-  private findStore(key: keyof A) {
-    return (this.state[key] as Pick<A, typeof key>[typeof key]) || null;
   }
 
   @autobind
@@ -124,9 +119,10 @@ export class RxNgQueryStore<A extends RxNgState> {
   public fetch<T extends keyof A>(key: T, param?: any) {
     return this.getStore(key).fetch(param);
   }
+
   @autobind
-  public refetch<T extends keyof A>(key: T) {
-    return this.getStore(key).refetch();
+  public reload<T extends keyof A>(key: T) {
+    return this.getStore(key).reload();
   }
 
   @autobind

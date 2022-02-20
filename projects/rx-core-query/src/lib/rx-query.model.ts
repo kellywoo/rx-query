@@ -36,6 +36,12 @@ export interface RxStoreOption<A, B> {
    * @description initial data
    **/
   initState: A;
+
+  /**
+   * @description perform query with the construction of the store. should have param property
+   **/
+  prefetch?: RxQueryParam<B> | null;
+
   /**
    * @description used to check cache-key and inside select
    **/
@@ -59,10 +65,6 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
    * @description ignore any refetch and cache strategy
    **/
   staticStore?: boolean;
-  /**
-   * @description perform query with the construction of the store. should have param property
-   **/
-  prefetch?: RxQueryParam<B> | null;
   /**
    * @description refetch on reconnect(if the staleModeDuration has passed)
    **/

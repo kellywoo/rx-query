@@ -15,12 +15,14 @@ import { RxQueryMutateFn, RxQueryOption, RxQueryStatus } from './rx-query.model'
 import { RxQueryNotifier, RxStoreOptionSchemed } from './rx-query.schemed.model';
 import { deepEqual, shallowEqualDepth } from './rx-query.util';
 import { getRxConstSettings, RxConst } from './rx-const';
+import { RxState } from './rx-state';
 
 export abstract class RxStoreAbstract<A, B> {
   protected abstract readonly key: string;
   protected abstract readonly initState: A;
   protected abstract readonly retry: number;
   protected abstract readonly retryDelay: number;
+  protected abstract latestParam?: B;
   protected abstract readonly RX_CONST: RxConst;
   protected abstract readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected unSupportedError = (name: string) => {
@@ -34,10 +36,11 @@ export abstract class RxStoreAbstract<A, B> {
   public abstract readonly status: () => Observable<RxQueryStatus<A>>;
   public abstract readonly fetch: (payload?: any) => void;
   public abstract readonly reset: () => void;
-  public abstract readonly refetch: () => void;
+  public abstract readonly reload: () => void;
   public abstract readonly mutate: (payload: RxQueryMutateFn<A>) => boolean;
   public abstract readonly destroy: () => void;
   public abstract readonly disableRefetch: (disable: boolean) => void;
+  public abstract readonly getKeepAlivedState: () => null | RxState;
 }
 
 export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
@@ -50,11 +53,13 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
   protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected readonly query: RxStoreOptionSchemed<A, B>['query'];
   protected readonly RX_CONST: RxConst;
+  protected latestParam?: B;
 
   constructor(options: RxQueryOption<A, B>, private notifiers?: RxQueryNotifier) {
     super();
     this.RX_CONST = getRxConstSettings();
-    const { initState, key, query, isEqual, retry, retryDelay } = this.getDefaultOption(options);
+    const { initState, key, query, isEqual, retry, retryDelay, prefetch } =
+      this.getDefaultOption(options);
     this.key = key;
     this.initState = initState;
     this.isEqual = isEqual;
@@ -73,7 +78,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
       .pipe(
         switchMap(({ param }: any) => {
           let retryTimes = this.retry;
-          this.state$.next({ ...this.state$.getValue(), loading: false, untrustedData: true });
+          this.state$.next({ ...this.state$.getValue(), loading: true });
           return this.query(param).pipe(
             tap((res) => {
               const state = this.state$.getValue();
@@ -93,6 +98,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
               } else {
                 this.state$.next({
                   ...this.state$.getValue(),
+                  loading: false,
                   error: err,
                   untrustedData: true,
                 });
@@ -103,12 +109,16 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
         }),
       )
       .subscribe();
+    if (prefetch) {
+      this.fetch(prefetch.param);
+    }
   }
 
   private getDefaultOption(options: RxQueryOption<A, B>): RxStoreOptionSchemed<A, B> {
     return {
       key: options.key,
       initState: options.initState,
+      prefetch: options.prefetch || null,
       isEqual: options.isEqual || shallowEqualDepth,
       retry: options.retry || this.RX_CONST.defaultRetry,
       retryDelay: options.retryDelay || this.RX_CONST.defaultRetryDelay,
@@ -130,8 +140,13 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     return this.state$.pipe(distinctUntilChanged((a, b) => this.isEqual(a, b, 3)));
   };
 
-  public readonly fetch = (payload?: any) => {
+  public readonly fetch = (payload?: B) => {
+    this.latestParam = payload;
     this.trigger$.next({ param: payload });
+  };
+
+  public readonly reload = () => {
+    this.fetch(this.latestParam);
   };
 
   public readonly reset = () => {
@@ -167,11 +182,11 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     }
   };
 
-  public readonly refetch = () => {
-    return this.unSupportedError('refetch') as never;
+  public readonly disableRefetch = () => {
+    return this.unSupportedError('disableRefetch') as never;
   };
 
-  public disableRefetch = (disable: boolean) => {
-    return this.unSupportedError('disableRefetch') as never;
+  public readonly getKeepAlivedState = () => {
+    return null;
   };
 }
