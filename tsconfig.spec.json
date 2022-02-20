@@ -1,11 +1,13 @@
-/* To learn more about this file see: https://angular.io/config/tsconfig. */
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
-    "types": [
-      "jasmine"
-    ]
+    "types": ["jest", "node", "jsdom"],
+    "esModuleInterop": true,
+    "paths": {
+      "rx-ng-query": ["projects/rx-ng-query.main.ts"],
+      "rx-core-query": ["projects/rx-core-query.main.ts"]
+    }
   },
   "files": [
     "src/test.ts",
