@@ -18,7 +18,7 @@ export class RxCache<A = any, B = any> {
 
   get notification$() {
     return this.status$.pipe(
-      distinctUntilChanged((a, b) => shallowEqualDepth(a, b, 3)),
+      distinctUntilChanged((a, b) => shallowEqualDepth(a, b, 2)),
       takeUntil(this.stop$),
     );
   }

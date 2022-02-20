@@ -19,12 +19,19 @@ export function autobind(target: any, key: string, descriptor: TypedPropertyDesc
       return bound;
     },
     set(v: (...args: any) => void) {
-      org = v;
+      // @ts-ignore
+      this[key]; // in case of not inner props aren't initiated
+      // @ts-ignore
+      this[key] = v;
+      // org = v;
     },
   };
 }
 
 const isSame = (a: any, b: any) => {
+  if (a instanceof Date && b instanceof Date) {
+    return a.getTime() === b.getTime();
+  }
   if (typeof a !== 'number' && typeof b !== 'number') {
     return a === b;
   }
@@ -54,8 +61,11 @@ export const deepEqual = (a: any, b: any) => {
   return true;
 };
 
-export const shallowEqualDepth = (a: any, b: any, nth = 0) => {
+export const shallowEqualDepth = (a: any, b: any, nth = 1) => {
   if (isSame(a, b)) return true;
+  if (nth === 0) {
+    return false;
+  }
   if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) {
     return false;
   }
