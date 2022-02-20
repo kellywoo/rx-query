@@ -19,7 +19,6 @@ export class AppTodoStore implements OnDestroy {
     key: TODO_CACHE_TYPE.list,
     prefetch: { param: null },
     keepAlive: true,
-    refetchInterval: 10,
     refetchOnReconnect: true,
     initState: [],
   })
@@ -38,6 +37,7 @@ export class AppTodoStore implements OnDestroy {
     initState: null,
     caching: 30,
     keepAlive: true,
+    dataEasing: true,
     paramToCachingKey(p: any) {
       return p;
     },
@@ -119,10 +119,10 @@ export class NgrxTodoComponent implements OnDestroy {
         this.todoItem = item;
       });
     this.rxStore
-      .select(USER_CACHE_TYPE.user, (state) => state.name)
+      .select(USER_CACHE_TYPE.user, (state) => state?.name || '')
       .pipe(takeUntil(this.destroy$))
       .subscribe((name) => {
-        this.name = `${name}'s ToDo List`;
+        this.name = name? `${name}'s ToDo List` : 'Something is wrong';
       });
   }
   showDetail(id: number) {

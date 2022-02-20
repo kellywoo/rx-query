@@ -25,6 +25,7 @@ export interface RxQueryOptionSchemed<A, B>
   paramToCachingKey?: (p: any) => any;
   staleModeDuration: number;
   refetchOnStaleMode: boolean;
+  dataEasing: boolean;
 }
 
 export interface RxQueryNotifier {

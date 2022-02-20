@@ -103,6 +103,11 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
    * @description keep the cache after destroying and can be used for next time
    **/
   keepAlive?: boolean;
+
+  /**
+   * @description when cache target changes keep the current data.
+   **/
+  dataEasing?: boolean;
 }
 
 export type RxQueryParam<B> = { param?: B; refetch?: boolean };

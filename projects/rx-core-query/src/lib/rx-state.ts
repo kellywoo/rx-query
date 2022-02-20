@@ -1,6 +1,7 @@
 import { RxCache } from './rx-cache';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, filter, skip, tap } from 'rxjs';
 import { RxQueryStatus } from './rx-query.model';
+import { shallowEqualDepth } from './rx-query.util';
 
 export const INIT_CACHE_KEY = Symbol();
 
@@ -9,17 +10,22 @@ export class RxState<A = any, B = any> {
   private currentCache!: RxCache<A, B>;
   private cacheQueue: RxCache<A, B>[] = [];
   private state$!: BehaviorSubject<RxQueryStatus<A>>;
+  private dataEasing = false;
+  private key: string;
   public alive = true;
   public readonly max: number;
   public readonly min: number;
-  constructor({ max, min }: { max: number; min: number }, private initState: A) {
+
+  constructor({ max, min, key }: { max: number; min: number; key: string }, private initState: A) {
     this.initCache = new RxCache<A, B>(INIT_CACHE_KEY, this.initState);
     this.min = Math.floor(Math.max(min || 0, 0));
     this.max = Math.floor(Math.max(max, this.min));
+    this.key = key;
   }
 
-  public connect(cacheKey?: any) {
+  public connect({ cacheKey, dataEasing }: { cacheKey?: any; dataEasing: boolean }) {
     const currentCache = this.getCache(cacheKey) || this.initCache;
+    this.dataEasing = dataEasing;
     this.state$ = new BehaviorSubject<RxQueryStatus<A>>(currentCache.getCurrentData());
     this.currentCache = currentCache;
     this.listenToCache(this.currentCache);
@@ -34,9 +40,18 @@ export class RxState<A = any, B = any> {
   }
 
   private listenToCache(cache: RxCache<A, B>) {
-    cache.notification$.subscribe((state) => {
-      this.state$.next(state);
-    });
+    cache.notification$
+      .pipe(
+        filter((state) => {
+          return Boolean(state.error || !this.dataEasing || state.ts !== 0);
+        }),
+      )
+      .subscribe((state) => {
+        const prev = this.state$.getValue();
+        if (!shallowEqualDepth(prev, state, 1)) {
+          this.state$.next(state);
+        }
+      });
   }
 
   public getState() {

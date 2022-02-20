@@ -82,6 +82,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       refetchOnStaleMode,
       caching,
       keepAlive,
+      dataEasing,
       paramToCachingKey,
       query,
       isEqual,
@@ -103,12 +104,15 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.cacheState =
       this.keepAlive && cacheState
         ? cacheState
-        : new RxState<A, B>({ max: caching, min: this.RX_CONST.defaultCaching }, this.initState);
-    if (prefetch?.param) {
-      this.cacheState.connect(this.getCacheKey(prefetch.param));
-    } else {
-      this.cacheState.connect();
-    }
+        : new RxState<A, B>(
+            { max: caching, min: this.RX_CONST.defaultCaching, key: this.key },
+            this.initState,
+          );
+    const cacheStateOption = {
+      cacheKey: prefetch ? this.getCacheKey(prefetch.param) : INIT_CACHE_KEY,
+      dataEasing,
+    };
+    this.cacheState.connect(cacheStateOption);
     this.initQueryStream();
     if (prefetch) {
       this.fetch(prefetch.param);
@@ -217,6 +221,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       query: options.query || ((a?: B) => of(a as unknown as A)),
       initState: options.initState,
       prefetch: options.prefetch || null,
+      dataEasing: options.dataEasing || false,
       refetchOnEmerge: options.refetchOnEmerge || false,
       refetchOnReconnect: options.refetchOnReconnect || false,
       staleModeDuration: options.staleModeDuration ?? staleModeDuration,
@@ -264,7 +269,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         scan<boolean, { startTime: number; reconnectedOrEmerge: boolean }, null>(
           (p, reconnectedOrEmerge) => {
             if (!p) {
-              return { startTime: Date.now(), reconnectedOrEmerge: false };
+              return { startTime: Date.now(), reconnectedOrEmerge };
             }
             return {
               reconnectedOrEmerge,

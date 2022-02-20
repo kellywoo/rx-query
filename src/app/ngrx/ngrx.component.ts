@@ -1,6 +1,6 @@
 import { Component, Injectable, OnDestroy } from '@angular/core';
 import { RxNgService, RxNgQuery, RxNgQueryStore, RxQueryStatus } from 'rx-ng-query';
-import { Observable, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 import { fromFetch } from 'rxjs/fetch';
 
 export const USER_CACHE_TYPE = {
@@ -29,7 +29,9 @@ export class AppUserStore implements OnDestroy {
   })
   fetchUser() {
     return fromFetch('https://jsonplaceholder.typicode.com/users/1', {
-      selector: (res) => (res.ok ? res.json() : throwError(new Error('nope'))),
+      selector: (res) => {
+        return res.json();
+      },
     });
   }
 
@@ -46,7 +48,12 @@ export class AppUserStore implements OnDestroy {
 @Component({
   selector: 'my-app',
   template: `<h1>Todo List</h1>
-    <ng-template [rxNgSuspense]="profileStatus" [loadingTemplate]="loadingTemplate" let-data>
+    <ng-template
+      [rxNgSuspense]="profileStatus"
+      [loadingTemplate]="loadingTemplate"
+      [errorTemplate]="errorTemplate"
+      let-data
+    >
       <dl>
         <dt>name</dt>
         <dd>{{ data.name }}</dd>
@@ -55,13 +62,16 @@ export class AppUserStore implements OnDestroy {
         <dt>phone</dt>
         <dd>{{ data.phone }}</dd>
       </dl>
+      <div>keep alive & cache (api after 1second delay)</div>
+      <button type="button" (click)="toggleChild()">toggle todo</button>
+      <ngrx-todo *ngIf="showTodo"></ngrx-todo>
     </ng-template>
     <ng-template #loadingTemplate>
       <div>...loading</div>
     </ng-template>
-    <div>keep alive & cache (api after 1second delay)</div>
-    <button type="button" (click)="toggleChild()">toggle todo</button>
-    <ngrx-todo *ngIf="showTodo"></ngrx-todo>`,
+    <ng-template #errorTemplate let-err>
+      <div>ErrorHappen {{ showError(err) }}</div>
+    </ng-template>`,
 })
 export class NgRxComponent {
   showTodo = false;
@@ -72,6 +82,9 @@ export class NgRxComponent {
     });
   }
 
+  showError(err: Error) {
+    console.log(err);
+  }
   toggleChild() {
     this.showTodo = !this.showTodo;
   }
