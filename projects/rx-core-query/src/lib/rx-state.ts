@@ -7,7 +7,7 @@ export const INIT_CACHE_KEY = Symbol();
 export class RxState<A = any, B = any> {
   private initCache: RxCache<A, B>;
   private currentCache!: RxCache<A, B>;
-  private cacheQueue: RxCache<A, B>[] = []; // keep the order
+  private cacheQueue: RxCache<A, B>[] = [];
   private state$!: BehaviorSubject<RxQueryStatus<A>>;
   public alive = true;
   public readonly max: number;
@@ -16,10 +16,10 @@ export class RxState<A = any, B = any> {
     this.initCache = new RxCache<A, B>(INIT_CACHE_KEY, this.initState);
     this.min = Math.floor(Math.max(min || 0, 0));
     this.max = Math.floor(Math.max(max, this.min));
-    this.restart();
+    this.unfreeze();
   }
 
-  public restart() {
+  public unfreeze() {
     this.state$ = new BehaviorSubject<RxQueryStatus<A>>(this.initCache.getCurrentData());
     this.currentCache = this.initCache;
     this.listenToCache(this.currentCache);
@@ -85,7 +85,7 @@ export class RxState<A = any, B = any> {
     this.cacheQueue.push(cache);
   }
 
-  pause() {
+  freeze() {
     this.state$.complete();
     this.currentCache.unNotify();
   }

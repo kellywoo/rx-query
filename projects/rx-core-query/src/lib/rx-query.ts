@@ -106,7 +106,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         ? cacheState
         : new RxState<A, B>({ max: caching, min: this.RX_CONST.defaultCaching }, this.initState);
     if (this.cacheState === cacheState) {
-      this.cacheState.restart();
+      this.cacheState.unfreeze();
     }
     this.initQueryStream();
     if (prefetch) {
@@ -327,6 +327,13 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.fetch(this.latestParam, true);
   };
 
+  public readonly reload = () => {
+    if (!this.fetched || this.refetchDisabled) {
+      return;
+    }
+    this.fetch(this.latestParam);
+  }
+
   public readonly reset = () => {
     this.refetchInterval$.next(-1);
     this.setRefetchStrategy(false);
@@ -347,7 +354,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.trigger$.complete();
     this.refetchInterval$.complete();
     if (this.keepAlive) {
-      this.cacheState.pause();
+      this.cacheState.freeze();
     } else {
       this.cacheState.destroy();
     }
