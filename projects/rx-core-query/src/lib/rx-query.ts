@@ -243,7 +243,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       return;
     }
     this.fetched = fetchInitiated;
-    if (!this.refetchOnReconnect && this.refetchOnEmerge) {
+    if (!this.refetchOnReconnect && !this.refetchOnEmerge) {
       return;
     }
     if (!this.fetched) {
