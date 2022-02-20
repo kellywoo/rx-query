@@ -38,7 +38,7 @@ export class RxCache<A = any, B = any> {
   prepareFetching() {
     this.loading = true;
     this.error = null;
-    this.changeDetect();
+    this.notifyChange();
   }
 
   onSuccess(data: A) {
@@ -48,7 +48,7 @@ export class RxCache<A = any, B = any> {
     this.error = null;
     this.data = isSame ? this.data : data;
     this.untrustedData = false;
-    this.changeDetect();
+    this.notifyChange();
   }
 
   onError(err: Error, refetch?: boolean) {
@@ -57,7 +57,7 @@ export class RxCache<A = any, B = any> {
     if (!refetch) {
       this.untrustedData = true;
     }
-    this.changeDetect();
+    this.notifyChange();
   }
 
   onMutate(payload: RxQueryMutateFn<A>) {
@@ -67,7 +67,7 @@ export class RxCache<A = any, B = any> {
     const mutated = (payload as RxQueryMutateFn<A>)(this.data);
     if (!shallowEqualDepth(mutated, this.data, 1)) {
       this.data = mutated;
-      this.changeDetect();
+      this.notifyChange();
     }
     return true;
   }
@@ -82,7 +82,7 @@ export class RxCache<A = any, B = any> {
     };
   }
 
-  private changeDetect() {
+  private notifyChange() {
     this.status$.next(this.getCurrentData());
   }
 

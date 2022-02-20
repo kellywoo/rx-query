@@ -15,7 +15,6 @@ import {
   Subject,
   Subscription,
   switchMap,
-  take,
   takeUntil,
   tap,
   timer,
@@ -106,7 +105,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         ? cacheState
         : new RxState<A, B>({ max: caching, min: this.RX_CONST.defaultCaching }, this.initState);
     if (this.cacheState === cacheState) {
-      this.cacheState.unfreeze();
+      this.cacheState.connect();
     }
     this.initQueryStream();
     if (prefetch) {

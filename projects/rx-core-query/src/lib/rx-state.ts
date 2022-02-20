@@ -16,10 +16,10 @@ export class RxState<A = any, B = any> {
     this.initCache = new RxCache<A, B>(INIT_CACHE_KEY, this.initState);
     this.min = Math.floor(Math.max(min || 0, 0));
     this.max = Math.floor(Math.max(max, this.min));
-    this.unfreeze();
+    this.connect();
   }
 
-  public unfreeze() {
+  public connect() {
     this.state$ = new BehaviorSubject<RxQueryStatus<A>>(this.initCache.getCurrentData());
     this.currentCache = this.initCache;
     this.listenToCache(this.currentCache);
