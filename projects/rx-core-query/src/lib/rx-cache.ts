@@ -92,8 +92,8 @@ export class RxCache<A = any, B = any> {
 
   destroy() {
     (this.data as unknown) = null;
-    this.status$.complete();
     this.stop$.next();
     this.stop$.complete();
+    this.status$.complete();
   }
 }
