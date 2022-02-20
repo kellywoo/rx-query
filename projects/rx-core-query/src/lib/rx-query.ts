@@ -277,7 +277,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
           },
           null,
         ),
-        withLatestFrom(this.cacheState.getState().pipe(take(1))),
+        withLatestFrom(this.cacheState.getState()),
         filter(([{ reconnectedOrEmerge, startTime }, state]) => {
           if (reconnectedOrEmerge) {
             if (state.untrustedData && !state.loading) {

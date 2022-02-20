@@ -25,7 +25,7 @@ export class AppUserStore implements OnDestroy {
     refetchInterval: 300,
     refetchOnReconnect: true,
     refetchOnEmerge: true,
-    initState: [],
+    initState: null,
   })
   fetchUser() {
     return fromFetch('https://jsonplaceholder.typicode.com/users/1', {
