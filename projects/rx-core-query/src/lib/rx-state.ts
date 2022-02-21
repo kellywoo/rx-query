@@ -6,9 +6,9 @@ import { shallowEqualDepth } from './rx-query.util';
 export const INIT_CACHE_KEY = Symbol();
 
 export class RxState<A = any, B = any> {
-  private initCache: RxCache<A, B>;
-  private currentCache!: RxCache<A, B>;
-  private cacheQueue: RxCache<A, B>[] = [];
+  private initCache: RxCache<A>;
+  private currentCache!: RxCache<A>;
+  private cacheQueue: RxCache<A>[] = [];
   private state$!: BehaviorSubject<RxQueryStatus<A>>;
   private dataEasing = false;
   private key: string;
@@ -17,21 +17,21 @@ export class RxState<A = any, B = any> {
   public readonly min: number;
 
   constructor({ max, min, key }: { max: number; min: number; key: string }, private initState: A) {
-    this.initCache = new RxCache<A, B>(INIT_CACHE_KEY, this.initState);
+    this.initCache = new RxCache<A>(INIT_CACHE_KEY, this.initState);
     this.min = Math.floor(Math.max(min || 0, 0));
     this.max = Math.floor(Math.max(max, this.min));
     this.key = key;
   }
 
-  public connect({ cacheKey, dataEasing }: { cacheKey?: any; dataEasing: boolean }) {
-    const currentCache = this.getCache(cacheKey) || this.initCache;
+  public connect({ cacheKey, dataEasing }: { cacheKey: any; dataEasing: boolean }) {
+    const currentCache = cacheKey === INIT_CACHE_KEY ? this.initCache : this.getCache(cacheKey) || this.createCache(cacheKey);
     this.dataEasing = dataEasing;
     this.state$ = new BehaviorSubject<RxQueryStatus<A>>(currentCache.getCurrentData());
     this.currentCache = currentCache;
     this.listenToCache(this.currentCache);
   }
 
-  private swapWithCurrent(cache: RxCache<A, B>) {
+  private swapWithCurrent(cache: RxCache<A>) {
     if (cache !== this.currentCache) {
       this.currentCache.unNotify();
       this.currentCache = cache;
@@ -39,7 +39,7 @@ export class RxState<A = any, B = any> {
     }
   }
 
-  private listenToCache(cache: RxCache<A, B>) {
+  private listenToCache(cache: RxCache<A>) {
     cache.notification$
       .pipe(
         filter((state) => {
@@ -52,6 +52,12 @@ export class RxState<A = any, B = any> {
           this.state$.next(state);
         }
       });
+  }
+
+  private createCache(cacheKey: any): RxCache<A>{
+    const cache = new RxCache<A>(cacheKey, this.initState);
+    this.setCache(cacheKey, cache);
+    return cache;
   }
 
   public getState() {
@@ -69,16 +75,12 @@ export class RxState<A = any, B = any> {
   }
 
   public createAndSwitch(cacheKey: any) {
-    let cache = this.find(cacheKey);
-    if (!cache) {
-      cache = new RxCache<A, B>(cacheKey, this.initState);
-      this.setCache(cacheKey, cache);
-    }
+    let cache = this.find(cacheKey) || this.createCache(cacheKey);
     this.swapWithCurrent(cache);
     return cache;
   }
 
-  public getCache(cacheKey: any): RxCache<A, B> | null {
+  public getCache(cacheKey: any): RxCache<A> | null {
     if (cacheKey === INIT_CACHE_KEY) {
       return this.initCache;
     }
@@ -89,7 +91,7 @@ export class RxState<A = any, B = any> {
     return this.cacheQueue.find((c) => c.isSameKey(cacheKey));
   }
 
-  private setCache(cacheKey: any, cache: RxCache<A, B>) {
+  private setCache(cacheKey: any, cache: RxCache<A>) {
     const idx = this.cacheQueue.findIndex((c) => c.isSameKey(cacheKey));
     const exists = idx >= 0;
     if (this.max === this.cacheQueue.length && !exists) {

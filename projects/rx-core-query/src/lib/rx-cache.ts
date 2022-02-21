@@ -2,7 +2,7 @@ import { BehaviorSubject, distinctUntilChanged, Subject, takeUntil } from 'rxjs'
 import { RxQueryMutateFn, RxQueryStatus } from './rx-query.model';
 import { deepEqual, shallowEqualDepth } from './rx-query.util';
 
-export class RxCache<A = any, B = any> {
+export class RxCache<A = any> {
   private ts = 0;
   private error: Error | null = null;
   private loading = false;
