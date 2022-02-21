@@ -92,6 +92,8 @@ export class RxCache<A = any> {
     (this.data as unknown) = null;
     this.stop$.next();
     this.stop$.complete();
+    this.stop$.unsubscribe();
     this.status$.complete();
+    this.status$.unsubscribe();
   }
 }

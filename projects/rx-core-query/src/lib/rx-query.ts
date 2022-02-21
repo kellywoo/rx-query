@@ -36,7 +36,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   protected readonly trigger$: Subject<{ refetch?: boolean; cache: RxCache; param?: B }> =
     new Subject();
   protected readonly key: string;
-  protected readonly initState: A;
+  protected readonly initState: Readonly<A>;
   protected readonly query: RxStoreOptionSchemed<A, B>['query'];
   protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected readonly retry: number;
