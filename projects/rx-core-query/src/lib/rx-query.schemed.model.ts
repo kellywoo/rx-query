@@ -11,6 +11,7 @@ export interface RxStoreOptionSchemed<A, B = A> {
   isEqual: (a: any, b: any, nth?: number) => boolean;
   retry: number;
   retryDelay: number;
+  keepAlive: boolean;
   query: (s?: B) => Observable<A>;
   prefetch?: RxQueryParam<B> | null;
 }
@@ -20,7 +21,6 @@ export interface RxQueryOptionSchemed<A, B>
   refetchOnReconnect: boolean;
   refetchOnEmerge: boolean;
   refetchInterval: number;
-  keepAlive: boolean;
   caching: number;
   paramToCachingKey?: (p: any) => any;
   staleModeDuration: number;

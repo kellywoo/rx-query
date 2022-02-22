@@ -69,7 +69,7 @@ export class RxNgQueryStore<A extends RxNgState> {
     }
     const cache = this.caches[key];
     this.state[key] = options.staticStore
-      ? new RxStore(options, this.notifiers)
+      ? new RxStore(options, this.notifiers, cache)
       : new RxQuery(options, this.notifiers, cache);
   }
 

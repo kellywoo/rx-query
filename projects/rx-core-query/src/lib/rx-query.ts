@@ -65,7 +65,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   constructor(
     options: RxQueryOption<A, B>,
     private notifiers: RxQueryNotifier,
-    cacheState?: RxState,
+    cacheState?: RxState<A, B>,
   ) {
     super();
     this.RX_CONST = getRxConstSettings();
@@ -140,12 +140,11 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.trigger$
       .pipe(
         debounceTime(0), // prevent multi request for one
-        switchMap(({ param, cache, refetch }: any) => {
+        switchMap(({ param, cache, refetch }: {param?: B, cache: RxCache<A>, refetch?: boolean}) => {
           let retryTimes = this.retry;
           return this.query(param).pipe(
-            delay(100),
             tap((res) => {
-              cache.onSuccess(res, param);
+              cache.onSuccess(res);
               this.refetchInterval$.next(this.refetchInterval);
               this.lastSuccessTime = Date.now();
             }),
@@ -363,7 +362,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     } else {
       this.cacheState.destroy();
     }
-    if (this.notifiers?.destroy$) {
+    if (this.notifiers.destroy$) {
       this.notifiers.destroy$.next(this.key);
     }
   };

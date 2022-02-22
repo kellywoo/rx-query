@@ -58,6 +58,11 @@ export interface RxStoreOption<A, B> {
    * @description delay time for retry
    **/
   retryDelay?: number;
+
+  /**
+   * @description keep the cache after destroying and can be used for next time
+   **/
+  keepAlive?: boolean;
 }
 
 export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
@@ -99,10 +104,6 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
    **/
   caching?: number;
 
-  /**
-   * @description keep the cache after destroying and can be used for next time
-   **/
-  keepAlive?: boolean;
 
   /**
    * @description when cache target changes keep the current data.
