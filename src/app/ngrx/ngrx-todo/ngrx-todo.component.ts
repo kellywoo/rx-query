@@ -50,7 +50,7 @@ export class AppTodoStore implements OnDestroy {
         });
   }
 
-  unselectTodoItem(id: number) {
+  unselectTodoItem() {
     this.fetchTodoItem(null);
   }
 
@@ -88,7 +88,7 @@ export class AppTodoStore implements OnDestroy {
                   <dd>{{ todoItem.completed ? 'done' : 'not yet' }}</dd>
                 </div>
               </dl>
-              <button (click)="closeDetail(item.id)">close</button>
+              <button (click)="closeDetail()">close</button>
             </div>
           </ng-container>
         </li>
@@ -122,15 +122,15 @@ export class NgrxTodoComponent implements OnDestroy {
       .select(USER_CACHE_TYPE.user, (state) => state?.name || '')
       .pipe(takeUntil(this.destroy$))
       .subscribe((name) => {
-        this.name = name? `${name}'s ToDo List` : 'Something is wrong';
+        this.name = name ? `${name}'s ToDo List` : 'Something is wrong';
       });
   }
   showDetail(id: number) {
     this.todoService.fetchTodoItem(id);
   }
 
-  closeDetail(id: number) {
-    this.todoService.unselectTodoItem(id);
+  closeDetail() {
+    this.todoService.unselectTodoItem();
   }
 
   ngOnDestroy() {

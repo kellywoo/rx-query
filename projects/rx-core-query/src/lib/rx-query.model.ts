@@ -104,7 +104,6 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
    **/
   caching?: number;
 
-
   /**
    * @description when cache target changes keep the current data.
    **/

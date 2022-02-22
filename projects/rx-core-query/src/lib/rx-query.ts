@@ -58,14 +58,14 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
 
   private fetched = false;
   private refetchDisabled = false;
-  private isOnStale: boolean = false;
+  private isOnStale = false;
   private refetchSbuscription?: Subscription;
   private lastSuccessTime = 0;
 
   constructor(
     options: RxQueryOption<A, B>,
     private notifiers: RxQueryNotifier,
-    cacheState?: RxState<A, B>,
+    cacheState?: RxState<A>,
   ) {
     super();
     this.RX_CONST = getRxConstSettings();
@@ -104,7 +104,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.cacheState =
       this.keepAlive && cacheState
         ? cacheState
-        : new RxState<A, B>(
+        : new RxState<A>(
             { max: caching, min: this.RX_CONST.defaultCaching, key: this.key },
             this.initState,
           );
@@ -140,31 +140,33 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.trigger$
       .pipe(
         debounceTime(0), // prevent multi request for one
-        switchMap(({ param, cache, refetch }: {param?: B, cache: RxCache<A>, refetch?: boolean}) => {
-          let retryTimes = this.retry;
-          return this.query(param).pipe(
-            tap((res) => {
-              cache.onSuccess(res);
-              this.refetchInterval$.next(this.refetchInterval);
-              this.lastSuccessTime = Date.now();
-            }),
-            catchError((err, caught) => {
-              if (this.isOnStale && !refetch) {
-                cache.onError(err);
-                return EMPTY;
-              }
-              if (retryTimes > 0) {
-                retryTimes--;
-                return timer(this.retryDelay).pipe(switchMap(() => caught));
-              } else {
-                if (!refetch) {
+        switchMap(
+          ({ param, cache, refetch }: { param?: B; cache: RxCache<A>; refetch?: boolean }) => {
+            let retryTimes = this.retry;
+            return this.query(param).pipe(
+              tap((res) => {
+                cache.onSuccess(res);
+                this.refetchInterval$.next(this.refetchInterval);
+                this.lastSuccessTime = Date.now();
+              }),
+              catchError((err, caught) => {
+                if (this.isOnStale && !refetch) {
                   cache.onError(err);
+                  return EMPTY;
                 }
-                return EMPTY;
-              }
-            }),
-          );
-        }),
+                if (retryTimes > 0) {
+                  retryTimes--;
+                  return timer(this.retryDelay).pipe(switchMap(() => caught));
+                } else {
+                  if (!refetch) {
+                    cache.onError(err);
+                  }
+                  return EMPTY;
+                }
+              }),
+            );
+          },
+        ),
         takeUntil(this.destroy$),
       )
       .subscribe();

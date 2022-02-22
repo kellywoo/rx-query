@@ -16,11 +16,6 @@ export interface RxNgState {
   [key: string]: any;
 }
 
-export interface RxNgParam<A extends RxNgState> {
-  query: (s: any) => Observable<any>;
-  options: RxQueryOption<any, any>;
-}
-
 @Injectable({ providedIn: 'root' })
 export class RxNgQueryStore<A extends RxNgState> {
   isDev = false;
@@ -77,7 +72,7 @@ export class RxNgQueryStore<A extends RxNgState> {
     if (this.state[key]) {
       return this.state[key] as RxStoreAbstract<any, any>;
     }
-    throw Error(`the store of key(${key}) seems not existing.`) as never;
+    throw Error(`the store of key(${key}) seems not existing.`);
   }
 
   @autobind

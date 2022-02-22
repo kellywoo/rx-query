@@ -1,5 +1,5 @@
 export function autobind(target: any, key: string, descriptor: TypedPropertyDescriptor<any>) {
-  let org = descriptor.value;
+  const org = descriptor.value;
   return {
     configurable: false,
     get() {
@@ -19,11 +19,13 @@ export function autobind(target: any, key: string, descriptor: TypedPropertyDesc
       return bound;
     },
     set(v: (...args: any) => void) {
+      /* eslint-disable */
       // @ts-ignore
       this[key]; // in case of not inner props aren't initiated
       // @ts-ignore
       this[key] = v;
       // org = v;
+      /* eslint-enable */
     },
   };
 }

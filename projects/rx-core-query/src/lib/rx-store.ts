@@ -81,7 +81,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     this.cacheState =
       this.keepAlive && cacheState
         ? cacheState
-        : new RxState<A, B>({ max: 0, min: 0, key: this.key }, this.initState);
+        : new RxState<A>({ max: 0, min: 0, key: this.key }, this.initState);
     this.cacheState.connect({
       cacheKey: this.getCacheKey(),
       dataEasing: true,

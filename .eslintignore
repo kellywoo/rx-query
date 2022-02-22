@@ -1,0 +1,10 @@
+dist/*
+node_modules
+config/*
+build/*
+public/*
+scripts/*
+setupTests.ts
+babel.config.js
+*.spec.ts
+*.md

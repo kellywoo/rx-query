@@ -1,11 +1,11 @@
 import { RxCache } from './rx-cache';
-import { BehaviorSubject, filter, skip, tap } from 'rxjs';
+import { BehaviorSubject, filter } from 'rxjs';
 import { RxQueryStatus } from './rx-query.model';
 import { shallowEqualDepth } from './rx-query.util';
 
 export const INIT_CACHE_KEY = Symbol();
 
-export class RxState<A = any, B = any> {
+export class RxState<A = any> {
   private initCache: RxCache<A>;
   private currentCache!: RxCache<A>;
   private cacheQueue: RxCache<A>[] = [];
@@ -59,7 +59,7 @@ export class RxState<A = any, B = any> {
 
   public createAndSwitch(cacheKey: any) {
     this.checkValidation();
-    let cache = this.find(cacheKey) || this.createCache(cacheKey);
+    const cache = this.find(cacheKey) || this.createCache(cacheKey);
     this.swapWithCurrent(cache);
     return cache;
   }
@@ -75,7 +75,7 @@ export class RxState<A = any, B = any> {
     }
   }
 
-  private checkValidation(){
+  private checkValidation() {
     this.checkAlive();
     if (!this.state$) {
       throw new Error('connect it before use any methods');

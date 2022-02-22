@@ -29,7 +29,7 @@ export class RxNgQueryModule {
     return STORE;
   }
 
-  static withInitStore<A>(
+  static withInitStore(
     source?: (...args: any[]) => RxQueryOption<any, any>[],
     deps?: any[],
   ): ModuleWithProviders<RxNgQueryModule> {

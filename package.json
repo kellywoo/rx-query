@@ -4,9 +4,10 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build rx-ng-query",
+    "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "jest projects/*"
+    "test": "jest projects/*",
+    "lint:fix": "eslint --ext .js,.ts  --fix projects/"
   },
   "private": true,
   "dependencies": {

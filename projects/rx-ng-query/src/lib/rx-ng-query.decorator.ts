@@ -27,12 +27,12 @@ export function RxNgQuery(meta: Omit<RxQueryOption<any, any>, 'staticStore'>) {
           get() {
             return bound;
           },
-          set(v) {
+          set() {
             throw Error('does not apply setter, do not rewrite');
           },
         });
       },
-      set(v: any) {
+      set() {
         throw Error('does not apply setter, do not rewrite');
       },
     };
@@ -63,13 +63,13 @@ export function RxNgStore(meta: RxStoreOption<any, any>) {
           get() {
             return bound;
           },
-          set(v) {
+          set() {
             throw Error('does not apply setter, do not rewrite');
           },
         });
         return bound;
       },
-      set(v: any) {
+      set() {
         throw Error('does not apply setter, do not rewrite');
       },
     };
