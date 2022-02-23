@@ -115,6 +115,14 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
    * @description when cache target changes keep the current data.
    **/
   dataEasing?: boolean;
+  /**
+   * @description min valid reconnect time, if connection gets off and reconnection happens before it, does not consider reconnect event
+   **/
+  minValidReconnectTime?: number;
+  /**
+   * @description min valid focus time, if window gets blurred and focused before it, does not consider focus event
+   **/
+  minValidFocusTime?: number;
 }
 
 export type RxQueryParam<B> = { param?: B; refetch?: boolean };

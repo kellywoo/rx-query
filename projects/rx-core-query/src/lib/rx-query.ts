@@ -59,6 +59,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   private isOnBackground = false;
   private refetchSubscription?: Subscription;
   private lastSuccessTime = 0;
+  private minValidReconnectTime = 0;
+  private minValidFocusTime = 0;
 
   constructor(
     options: RxQueryOption<A, B>,
@@ -81,6 +83,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       caching,
       keepAlive,
       dataEasing,
+      minValidFocusTime,
+      minValidReconnectTime,
       paramToCachingKey,
       query,
       isEqual,
@@ -96,6 +100,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.refetchOnReconnect = refetchOnReconnect;
     this.refetchOnEmerge = refetchOnEmerge;
     this.keepAlive = keepAlive;
+    this.minValidFocusTime = minValidFocusTime;
+    this.minValidReconnectTime = minValidReconnectTime;
     this.isEqual = isEqual;
     this.paramToCachingKey = paramToCachingKey;
     this.subscribeStaleMode();
@@ -188,6 +194,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       defaultInterval,
       minRefetchTime,
       maxCaching,
+      minValidFocusTime,
+      minValidReconnectTime,
     } = this.RX_CONST;
 
     return {
@@ -210,6 +218,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       refetchOnEmerge: options.refetchOnEmerge !== false,
       refetchOnReconnect: options.refetchOnReconnect !== false,
       refetchOnBackground: options.refetchOnBackground || false,
+      minValidFocusTime: options.minValidFocusTime ?? minValidFocusTime,
+      minValidReconnectTime: options.minValidReconnectTime ?? minValidReconnectTime,
       staleTime: options.staleTime ?? staleTime,
       refetchInterval:
         options.refetchInterval === 0
@@ -255,12 +265,12 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.refetchSubscription = new Subscription();
     if (this.refetchOnReconnect) {
       this.refetchSubscription.add(
-        this.subscribeRezoom(this.notifiers.online$, this.RX_CONST.minValidReconnectTime),
+        this.subscribeRezoom(this.notifiers.online$, this.minValidReconnectTime),
       );
     }
     if (this.refetchOnEmerge) {
       this.refetchSubscription.add(
-        this.subscribeRezoom(this.notifiers.windowActive$, this.RX_CONST.minValidFocusTime),
+        this.subscribeRezoom(this.notifiers.windowActive$, this.minValidFocusTime),
       );
     }
     if (this.refetchInterval > 0) {

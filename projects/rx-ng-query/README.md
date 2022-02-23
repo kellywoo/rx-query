@@ -137,6 +137,20 @@ min value is 2(2seconds)<br />interval calls. restart on query successed or erre
 <tr>
 
 <tr>
+<th>minValidReconnectTime</th>
+<td>number</td>
+<td><b>defaultValue: 12(cache only one for initial hash)</b><br />min valid reconnect time, if connection gets off and reconnection happens before it, does not consider reconnect event</td>
+</tr>
+<tr>
+
+<tr>
+<th>minValidFocusTime</th>
+<td>number</td>
+<td><b>defaultValue: 60(cache only one for initial hash)</b><br />min valid focus time, if window gets blurred and focused before it, does not consider focus event</td>
+</tr>
+<tr>
+
+<tr>
 <th>paramToHash</th>
 <td>function: ((p: param) => string) | string</td>
 <td><b>defaultValue: undefined</b><br />util to get cash hash key from query param, check for 1 depth</td>

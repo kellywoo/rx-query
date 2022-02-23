@@ -26,6 +26,8 @@ export interface RxQueryOptionSchemed<A, B>
   staleTime: number;
   refetchOnBackground: boolean;
   dataEasing: boolean;
+  minValidReconnectTime: number;
+  minValidFocusTime: number;
 }
 
 export interface RxQueryNotifier {

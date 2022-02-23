@@ -137,6 +137,20 @@ min value is 2(2seconds)<br />interval calls. restart on query successed or erre
 <tr>
 
 <tr>
+<th>minValidReconnectTime</th>
+<td>number</td>
+<td><b>defaultValue: 12(cache only one for initial hash)</b><br />min valid reconnect time, if connection gets off and reconnection happens before it, does not consider reconnect event</td>
+</tr>
+<tr>
+
+<tr>
+<th>minValidFocusTime</th>
+<td>number</td>
+<td><b>defaultValue: 60(cache only one for initial hash)</b><br />min valid focus time, if window gets blurred and focused before it, does not consider focus event</td>
+</tr>
+<tr>
+
+<tr>
 <th>paramToHash</th>
 <td>function: ((p: param) => string) | string</td>
 <td><b>defaultValue: undefined</b><br />util to get cash hash key from query param, check for 1 depth</td>
@@ -168,11 +182,11 @@ const storeInitiator: (...arg: any[]) => RxQueryOption[] = (apiService: ApiServi
 const storeFetchDependency = [ApiService]; // this will be injected as storeInit arguments
 
 imports: [
-    ApiService, // custom service
-    RxNgQueryModule.withInitStore<RootStoreState>(
-      storeInitiator,
-      storeFetchDependency
-    ),
+  ApiService, // custom service
+  RxNgQueryModule.withInitStore<RootStoreState>(
+    storeInitiator,
+    storeFetchDependency
+  ),
 ]
 
 // or if you don't have initial store just import RxNgQueryModule
@@ -208,7 +222,7 @@ constructor(private rxNgQueryStore: RxNgQueryStore < any >,
 export class HistoryApiService {
   constructor(private apiService: ApiService) {
   }
-
+  
   // prefetch for fetching with registration
   @RxQuery({key: 'history', initState: [], prefetch: {param: null}})
   fetchHistory() {
@@ -225,10 +239,10 @@ export class HistoryApiService {
   providers: [HistoryApiService],
 })
 export class SomeComponent {
-    constructor(private historyApiService: HistoryApiService) {
-        // you should inject inside the component
-        // otherwise it will not initiated.
-    }
+  constructor(private historyApiService: HistoryApiService) {
+    // you should inject inside the component
+    // otherwise it will not initiated.
+  }
 }
 
 ```
@@ -369,10 +383,10 @@ defaultTemplateSort(status: RxQueryStatus<any>){
     if (loading) {
       return 'loading';
     }
-
+    
     return data ? 'content' : 'null';
   }
-
+  
   if (data) {
     return 'content';
   }
