@@ -27,6 +27,13 @@ export type RxQueryStatus<A> = {
   untrustedData?: boolean;
 };
 
+export type RxQueryResponse<A> = {
+  type: 'error' | 'success';
+  data: A | Error;
+  refetch: boolean;
+  param: any;
+};
+
 export interface RxStoreOption<A, B> {
   /**
    * @description store key
@@ -71,11 +78,11 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
    **/
   staticStore?: boolean;
   /**
-   * @description refetch on reconnect(if the staleModeDuration has passed)
+   * @description refetch on reconnect(if the staleTime has passed)
    **/
   refetchOnReconnect?: boolean;
   /**
-   * @description refetch on visibility changes(if the staleModeDuration has passed)
+   * @description refetch on visibility changes(if the staleTime has passed)
    **/
   refetchOnEmerge?: boolean;
   /**
@@ -87,17 +94,17 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
    * @description automatically stops refetch on staleMode(window visibility hidden & offline)
    * with true, it will refetch in staleMode
    **/
-  refetchOnStaleMode?: boolean;
+  refetchOnBackground?: boolean;
 
   /**
    * @description refetch or reconnect debounce time
    **/
-  staleModeDuration?: number;
+  staleTime?: number;
 
   /**
    * @description to distinguish unique cache, it takes param sent to fetch as argument
    **/
-  paramToCachingKey?: (p: any) => any;
+  paramToCachingKey?: ((p: any) => any) | string;
 
   /**
    * @description how many cache(distinguished by cachekey) can be saved. default is 0.

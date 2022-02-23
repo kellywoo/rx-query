@@ -2,7 +2,6 @@ import {
   catchError,
   combineLatest,
   debounceTime,
-  delay,
   distinctUntilChanged,
   EMPTY,
   filter,
@@ -11,16 +10,14 @@ import {
   Observable,
   of,
   scan,
-  skip,
   Subject,
   Subscription,
   switchMap,
   takeUntil,
   tap,
   timer,
-  withLatestFrom,
 } from 'rxjs';
-import { RxQueryMutateFn, RxQueryOption, RxQueryStatus } from './rx-query.model';
+import { RxQueryOption } from './rx-query.model';
 import {
   RxQueryNotifier,
   RxQueryOptionSchemed,
@@ -33,33 +30,34 @@ import { RxCache } from './rx-cache';
 import { getRxConstSettings, RxConst } from './rx-const';
 
 export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
-  protected readonly trigger$: Subject<{ refetch?: boolean; cache: RxCache; param?: B }> =
-    new Subject();
   protected readonly key: string;
   protected readonly initState: Readonly<A>;
-  protected readonly query: RxStoreOptionSchemed<A, B>['query'];
-  protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected readonly retry: number;
   protected readonly retryDelay: number;
+  protected readonly query: RxStoreOptionSchemed<A, B>['query'];
+  protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected readonly RX_CONST: RxConst;
+  protected readonly response$: RxStoreAbstract<A, B>['response$'] = new Subject();
+  protected readonly cacheState: RxState;
   protected latestParam?: B;
+  protected fetched = false;
 
   private readonly refetchInterval: number;
   private readonly refetchOnReconnect: boolean;
   private readonly refetchOnEmerge: boolean;
-  private readonly staleModeDuration: number;
-  private readonly refetchOnStaleMode: boolean;
+  private readonly staleTime: number;
+  private readonly refetchOnBackground: boolean;
   private readonly keepAlive: boolean;
   private readonly paramToCachingKey?: (p: any) => any;
 
-  private readonly cacheState: RxState;
+  private readonly trigger$: Subject<{ refetch: boolean; cache: RxCache; param: B }> =
+    new Subject();
   private readonly refetchInterval$ = new Subject<number>();
   private readonly destroy$ = new Subject<void>();
 
-  private fetched = false;
   private refetchDisabled = false;
-  private isOnStale = false;
-  private refetchSbuscription?: Subscription;
+  private isOnBackground = false;
+  private refetchSubscription?: Subscription;
   private lastSuccessTime = 0;
 
   constructor(
@@ -78,8 +76,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       refetchOnReconnect,
       refetchOnEmerge,
       refetchInterval,
-      staleModeDuration,
-      refetchOnStaleMode,
+      staleTime,
+      refetchOnBackground,
       caching,
       keepAlive,
       dataEasing,
@@ -93,8 +91,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.refetchInterval = refetchInterval * 1000;
     this.retry = retry;
     this.retryDelay = retryDelay * 1000;
-    this.staleModeDuration = staleModeDuration * 1000;
-    this.refetchOnStaleMode = refetchOnStaleMode;
+    this.staleTime = staleTime * 1000;
+    this.refetchOnBackground = refetchOnBackground;
     this.refetchOnReconnect = refetchOnReconnect;
     this.refetchOnEmerge = refetchOnEmerge;
     this.keepAlive = keepAlive;
@@ -131,8 +129,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         distinctUntilChanged(),
         takeUntil(this.destroy$),
       )
-      .subscribe((isOnStale) => {
-        this.isOnStale = isOnStale;
+      .subscribe((isOnBackground) => {
+        this.isOnBackground = isOnBackground;
       });
   }
 
@@ -141,26 +139,25 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       .pipe(
         debounceTime(0), // prevent multi request for one
         switchMap(
-          ({ param, cache, refetch }: { param?: B; cache: RxCache<A>; refetch?: boolean }) => {
+          ({ param, cache, refetch }: { param: B; cache: RxCache<A>; refetch: boolean }) => {
             let retryTimes = this.retry;
             return this.query(param).pipe(
               tap((res) => {
                 cache.onSuccess(res);
-                this.refetchInterval$.next(this.refetchInterval);
                 this.lastSuccessTime = Date.now();
+                this.refetchInterval$.next(this.refetchInterval);
+                this.response$.next({ type: 'success', refetch, data: res, param });
               }),
               catchError((err, caught) => {
-                if (this.isOnStale && !refetch) {
-                  cache.onError(err);
-                  return EMPTY;
-                }
-                if (retryTimes > 0) {
+                if (retryTimes > 0 && !this.isOnBackground) {
                   retryTimes--;
                   return timer(this.retryDelay).pipe(switchMap(() => caught));
                 } else {
                   if (!refetch) {
                     cache.onError(err);
                   }
+                  this.refetchInterval$.next(this.refetchInterval);
+                  this.response$.next({ type: 'error', refetch, data: err, param });
                   return EMPTY;
                 }
               }),
@@ -170,37 +167,12 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         takeUntil(this.destroy$),
       )
       .subscribe();
-
-    this.refetchInterval$
-      .pipe(
-        switchMap((intervalTime) => {
-          return intervalTime <= 0 ? EMPTY : timer(intervalTime);
-        }),
-        takeUntil(this.destroy$),
-      )
-      .subscribe(() => {
-        if (this.refetchDisabled) {
-          return;
-        }
-        if (!this.isOnStale || this.refetchOnStaleMode) {
-          this.refetch();
-        }
-      });
   }
 
   private getCacheKey(param?: any) {
     if (this.cacheState.max === 0) {
       return INIT_CACHE_KEY;
     }
-
-    if (
-      param &&
-      typeof param === 'object' &&
-      Object.prototype.hasOwnProperty.call(param, 'rxQueryCachingKey')
-    ) {
-      return param.rxQueryCachingKey;
-    }
-
     if (this.paramToCachingKey) {
       return this.paramToCachingKey(param);
     }
@@ -209,7 +181,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
 
   private getDefaultOption(options: RxQueryOption<A, B>): RxQueryOptionSchemed<A, B> {
     const {
-      staleModeDuration,
+      staleTime,
       defaultRetryDelay,
       defaultRetry,
       defaultCaching,
@@ -217,21 +189,28 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       minRefetchTime,
       maxCaching,
     } = this.RX_CONST;
+
     return {
       key: options.key,
       query: options.query || ((a?: B) => of(a as unknown as A)),
       initState: options.initState,
       prefetch: options.prefetch || null,
-      dataEasing: options.dataEasing || false,
-      refetchOnEmerge: options.refetchOnEmerge || false,
-      refetchOnReconnect: options.refetchOnReconnect || false,
-      staleModeDuration: options.staleModeDuration ?? staleModeDuration,
-      retry: options.retry ?? defaultRetry,
-      retryDelay: options.retryDelay ?? defaultRetryDelay,
       isEqual: options.isEqual || shallowEqualDepth,
       keepAlive: options.keepAlive || false,
-      paramToCachingKey: options.paramToCachingKey,
-      refetchOnStaleMode: options.refetchOnStaleMode || false,
+      retry: options.retry ?? defaultRetry,
+      retryDelay: options.retryDelay ?? defaultRetryDelay,
+      dataEasing: options.dataEasing || false,
+      paramToCachingKey:
+        typeof options.paramToCachingKey === 'string'
+          ? (() => {
+              const key = options.paramToCachingKey;
+              return (param: any) => param[key];
+            })()
+          : options.paramToCachingKey,
+      refetchOnEmerge: options.refetchOnEmerge !== false,
+      refetchOnReconnect: options.refetchOnReconnect !== false,
+      refetchOnBackground: options.refetchOnBackground || false,
+      staleTime: options.staleTime ?? staleTime,
       refetchInterval:
         options.refetchInterval === 0
           ? 0
@@ -240,86 +219,80 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     };
   }
 
+  private subscribeRezoom(target$: Observable<boolean>, duration: number) {
+    return target$
+      .pipe(
+        distinctUntilChanged(),
+        scan<boolean, { startTime: number; isOn: boolean }, null>((p, isOn) => {
+          if (!p) {
+            return { startTime: Date.now(), isOn };
+          }
+          return {
+            isOn,
+            startTime: isOn ? p.startTime! : Date.now(),
+          };
+        }, null),
+        filter(({ isOn, startTime }) => {
+          return isOn && Date.now() - startTime > duration;
+        }),
+      )
+      .subscribe(() => {
+        if (this.lastSuccessTime + duration < Date.now()) {
+          this.refetch();
+        }
+      });
+  }
+
   private setRefetchStrategy(fetchInitiated: boolean) {
     if (this.fetched === fetchInitiated) {
       return;
     }
     this.fetched = fetchInitiated;
-    if (!this.refetchOnReconnect && !this.refetchOnEmerge) {
-      return;
-    }
     if (!this.fetched) {
-      this.refetchSbuscription?.unsubscribe();
+      this.refetchSubscription?.unsubscribe();
       return;
     }
-    // refetch condition..
-    this.refetchSbuscription = combineLatest([
-      this.notifiers.visibilityChange$ && this.refetchOnEmerge
-        ? merge(of(true), this.notifiers.visibilityChange$)
-        : of(true),
-      this.notifiers.online$ && this.refetchOnReconnect
-        ? merge(of(true), this.notifiers.online$)
-        : of(true),
-    ])
-      .pipe(
-        skip(1), // first response is just placeholder
-        map<[boolean, boolean], boolean>(([visibility, online]) => {
-          return visibility && online;
-        }),
-        distinctUntilChanged(),
-        scan<boolean, { startTime: number; reconnectedOrEmerge: boolean }, null>(
-          (p, reconnectedOrEmerge) => {
-            if (!p) {
-              return { startTime: Date.now(), reconnectedOrEmerge };
+    this.refetchSubscription = new Subscription();
+    if (this.refetchOnReconnect) {
+      this.refetchSubscription.add(
+        this.subscribeRezoom(this.notifiers.online$, this.RX_CONST.minValidReconnectTime),
+      );
+    }
+    if (this.refetchOnEmerge) {
+      this.refetchSubscription.add(
+        this.subscribeRezoom(this.notifiers.visibilityChange$, this.RX_CONST.minValidFocusTime),
+      );
+    }
+    if (this.refetchInterval > 0) {
+      this.refetchSubscription.add(
+        this.refetchInterval$
+          .pipe(
+            switchMap((delayTime) => {
+              return delayTime <= 0 ? EMPTY : timer(delayTime);
+            }),
+            takeUntil(this.destroy$),
+          )
+          .subscribe(() => {
+            if (this.refetchDisabled || (this.isOnBackground && !this.refetchOnBackground)) {
+              this.refetchInterval$.next(this.refetchInterval);
+              return;
             }
-            return {
-              reconnectedOrEmerge,
-              startTime: reconnectedOrEmerge ? p.startTime! : Date.now(),
-            };
-          },
-          null,
-        ),
-        withLatestFrom(this.cacheState.getState()),
-        filter(([{ reconnectedOrEmerge, startTime }, state]) => {
-          if (reconnectedOrEmerge) {
-            if (state.untrustedData && !state.loading) {
-              // previous fetch must have failed so prepare it.
-              return true;
-            }
-            const now = Date.now();
-            return now - startTime > this.staleModeDuration;
-          }
-          return false;
-        }),
-        delay(200),
-        takeUntil(this.destroy$),
-      )
-      .subscribe(() => {
-        this.refetch();
-      });
+            this.refetch();
+          }),
+      );
+    }
   }
 
-  public readonly select = <T>(selector?: (s: A) => T) => {
-    return this.cacheState.getState().pipe(
-      map((state) => {
-        return selector ? selector(state.data) : (state.data as unknown as T);
-      }),
-      distinctUntilChanged((a, b) => this.isEqual(a, b, 1)),
-    );
-  };
-
-  public readonly status: () => Observable<RxQueryStatus<A>> = () => {
-    // whole
-    return this.cacheState.getState().pipe(distinctUntilChanged((a, b) => this.isEqual(a, b, 2)));
-  };
-
   public readonly fetch = (param?: B) => {
+    this.setRefetchStrategy(true);
     const cacheKey = this.getCacheKey(param);
     const cache = this.cacheState.createAndSwitch(cacheKey);
-    this.setRefetchStrategy(true);
-    cache.prepareFetching();
+    const state = cache.getCurrentData();
     this.latestParam = param;
-    this.trigger$.next({ cache, param });
+    if (state.ts === 0 || Date.now() > state.ts + this.staleTime) {
+      cache.prepareFetching();
+      this.trigger$.next({ cache, param: param!, refetch: false });
+    }
   };
 
   private readonly refetch = () => {
@@ -328,20 +301,12 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     }
     this.trigger$.next({
       cache: this.cacheState.getCurrentCache(),
+      param: this.latestParam!,
       refetch: true,
-      param: this.latestParam,
     });
   };
 
-  public readonly reload = () => {
-    if (!this.fetched || this.refetchDisabled) {
-      return;
-    }
-    this.fetch(this.latestParam);
-  };
-
   public readonly reset = () => {
-    this.refetchInterval$.next(-1);
     this.setRefetchStrategy(false);
     this.cacheState.reset();
   };
@@ -350,15 +315,14 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.refetchDisabled = disabled;
   };
 
-  public readonly mutate = (payload: RxQueryMutateFn<A>) => {
-    return this.cacheState.getCurrentCache().onMutate(payload);
-  };
-
   public readonly destroy = () => {
+    this.refetchInterval$.complete();
+    this.setRefetchStrategy(false);
+
     this.destroy$.next();
     this.destroy$.complete();
     this.trigger$.complete();
-    this.refetchInterval$.complete();
+    this.response$.complete();
     if (this.keepAlive) {
       this.cacheState.freeze();
     } else {
@@ -367,9 +331,5 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     if (this.notifiers.destroy$) {
       this.notifiers.destroy$.next(this.key);
     }
-  };
-
-  public readonly getAliveCacheState = () => {
-    return this.cacheState?.alive ? this.cacheState : null;
   };
 }

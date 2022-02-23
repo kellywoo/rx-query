@@ -10,6 +10,7 @@ import {
   RxQueryNotifier,
   RxState,
   RxQueryMutateFn,
+  RxQueryResponse,
 } from '../../../rx-core-query.main';
 
 export interface RxNgState {
@@ -103,6 +104,11 @@ export class RxNgQueryStore<A extends RxNgState> {
   @autobind
   public status<S, T extends keyof A>(key: T): Observable<RxQueryStatus<S>> {
     return this.getStore(key).status();
+  }
+
+  @autobind
+  public response<S, T extends keyof A>(key: T): Observable<RxQueryResponse<S>> {
+    return this.getStore(key).response();
   }
 
   @autobind

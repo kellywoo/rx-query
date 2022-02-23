@@ -1,6 +1,6 @@
 import { RxQueryNotifier, RxStore, shallowEqualDepth } from 'rx-core-query';
 import { map, of, Subject, throwError } from 'rxjs';
-import {success} from "ng-packagr/lib/utils/log";
+import Expect = jest.Expect;
 
 const getCurrentStatus = (store: any) => {
   return store.cacheState.getCurrentCache().getCurrentData();
@@ -18,12 +18,9 @@ describe('RxStore default props', () => {
     retry: 0,
     retryDelay: 0,
   };
-  let store: any;
-  beforeEach(() => {
-    store = new RxStore(option, notifier);
-  });
 
   it('check default props & state', () => {
+    const store = new RxStore(option, notifier) as any;
     expect(store.key).toBe(option.key);
     expect(store.initState).toBe(option.initState);
     expect(store.keepAlive).toBe(false);
@@ -45,20 +42,20 @@ describe('RxStore options for state', () => {
   afterAll(() => {
     jest.useRealTimers();
   });
-  const notifier: RxQueryNotifier = {
-    destroy$: new Subject(),
-    online$: new Subject(),
-    visibilityChange$: new Subject(),
-  };
   const defaultOption = {
-    key: 'store',
+    key: 'store state',
     initState: {},
   };
 
+  const param = {};
+  const res = 'hello';
+  const query = jest.fn().mockImplementation(() => of(res));
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('RxStore prefetch works', () => {
-    const param = {};
-    const res = 'hello';
-    const query = jest.fn().mockImplementation(() => of(res));
     const store = new RxStore({ ...defaultOption, query, prefetch: { param } }, notifier) as any;
     jest.runAllTimers();
     expect(query).toHaveBeenCalledTimes(1);
@@ -68,9 +65,6 @@ describe('RxStore options for state', () => {
   });
 
   it('RxStore keepAlive works', () => {
-    const param = {};
-    const res = 'hello';
-    const query = jest.fn().mockImplementation(() => of(res));
     const store = new RxStore(
       { ...defaultOption, query, keepAlive: true, prefetch: { param } },
       notifier,
@@ -102,7 +96,7 @@ describe('RxStore: retry', () => {
     jest.useRealTimers();
   });
   const defaultOption = {
-    key: 'store',
+    key: 'store retry',
     initState: {},
   };
   it('RxStore Error: retry works', () => {
@@ -154,13 +148,13 @@ describe('RxStore: fetch', () => {
     jest.useRealTimers();
   });
   const option = {
-    key: 'store',
+    key: 'store fetch',
     initState: {},
     retry: 0,
     retryDelay: 0,
   };
 
-  it('RxStore fetch', () => {
+  it('change status by fetch', () => {
     const param = {};
 
     const now = Date.now();
@@ -179,7 +173,92 @@ describe('RxStore: fetch', () => {
       }
     };
 
-    const store = new RxStore({ ...option, query }, notifier) as any;
+    const store = new RxStore({ ...option, query }, notifier);
+    const status: any[] = [];
+    const select: any[] = [];
+    const response: any[] = [];
+    store.status().subscribe((s: any) => {
+      status.push(s);
+    });
+    store.select().subscribe((s: any) => {
+      select.push(s);
+    });
+    store.response().subscribe((s: any) => {
+      response.push(s);
+    });
+    store.fetch(param);
+    jest.runAllTimers();
+    store.fetch(param);
+    jest.runAllTimers();
+    // status
+    expect(status.length).toBe(5);
+    expect(status[0]).toEqual({
+      ts: 0,
+      error: null,
+      data: option.initState,
+      untrustedData: true,
+      loading: false,
+    });
+    expect(status[1]).toEqual({
+      ts: 0,
+      error: null,
+      data: option.initState,
+      untrustedData: true,
+      loading: true,
+    });
+    expect(status[2]).toEqual({
+      ts: 0,
+      error: (expect as unknown as Expect).any(Error),
+      data: option.initState,
+      untrustedData: true,
+      loading: false,
+    });
+    expect(status[3]).toEqual({
+      ts: 0,
+      error: null,
+      data: option.initState,
+      untrustedData: true,
+      loading: true,
+    });
+    expect(status[4]).toEqual({
+      ts: now,
+      error: null,
+      data: successRes,
+      untrustedData: false,
+      loading: false,
+    });
+    // select
+    expect(select.length).toBe(2);
+    expect(select[0]).toBe(option.initState);
+    expect(select[1]).toBe(successRes);
+    // response
+    expect(response.length).toBe(2);
+    expect(response[0]).toEqual({
+      type: 'error',
+      refetch: false,
+      data: (expect as unknown as Expect).any(Error),
+      param,
+    });
+    expect(response[1]).toEqual({
+      type: 'success',
+      refetch: false,
+      data: successRes,
+      param,
+    });
+    store.destroy();
+  });
+});
+
+describe('RxStore: mutate', () => {
+  const option = {
+    key: 'store fetch',
+    initState: { id: 0 },
+    retry: 0,
+    retryDelay: 0,
+  };
+
+  it('change status by fetch', () => {
+    const store = new RxStore<{ id: number }>(option, notifier);
     const status: any[] = [];
     const select: any[] = [];
     store.status().subscribe((s: any) => {
@@ -188,19 +267,26 @@ describe('RxStore: fetch', () => {
     store.select().subscribe((s: any) => {
       select.push(s);
     });
-    store.fetch(param);
-    jest.runAllTimers();
-    store.fetch(param);
-    jest.runAllTimers();
-    expect(status.length).toBe(5);
-    expect(status[0]).toEqual({ts: 0, error: null, data: option.initState, untrustedData: true, loading: false});
-    expect(status[1]).toEqual({ts: 0, error: null, data: option.initState, untrustedData: true, loading: true});
-    expect(status[2]).toEqual({ts: 0, error: expect.any(Error), data: option.initState, untrustedData: true, loading: false});
-    expect(status[3]).toEqual({ts: 0, error: null, data: option.initState, untrustedData: true, loading: true});
-    expect(status[4]).toEqual({ts: now, error: null, data: successRes, untrustedData: false, loading: false});
-    expect(select.length).toBe(2);
-    expect(select[0]).toBe(option.initState);
-    expect(select[1]).toBe(successRes);
+    store.mutate((state) => {
+      return { id: state.id + 1 };
+    });
+    store.mutate((state: { id: number }) => {
+      return { id: state.id + 1 };
+    });
+    expect(status.length).toBe(3);
+    [0, 1, 2].forEach((v) => {
+      expect(status[v]).toEqual({
+        ts: 0,
+        error: null,
+        data: { id: v },
+        untrustedData: true,
+        loading: false,
+      });
+    });
+    expect(select.length).toBe(3);
+    [0, 1, 2].forEach((v) => {
+      expect(select[v]).toEqual({ id: v });
+    });
     store.destroy();
   });
 });

@@ -23,8 +23,8 @@ export interface RxQueryOptionSchemed<A, B>
   refetchInterval: number;
   caching: number;
   paramToCachingKey?: (p: any) => any;
-  staleModeDuration: number;
-  refetchOnStaleMode: boolean;
+  staleTime: number;
+  refetchOnBackground: boolean;
   dataEasing: boolean;
 }
 

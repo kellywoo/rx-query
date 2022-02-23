@@ -1,4 +1,5 @@
 # RxQuery
+
 It is built with rxjs and designed easy to use. queryStore is Singleton, only one exists throughout the app.
 
 # Work in progress
@@ -14,7 +15,9 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 [Sample Test Url: https://stackblitz.com/edit/angular-ivy-vxsmmj?file=src/app/app.component.ts](https://stackblitz.com/edit/angular-ivy-vxsmmj?file=src/app/app.component.ts)
 
 ## RxQueryOption
+
 ### StoreOptions (For RxStore & RxQuery)
+
 <table width="100%">
 <thead>
 <tr>
@@ -40,6 +43,12 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 <th>query</th>
 <td>function (args: any): Observable&lt;any&gt; </td>
 <td><b>defaultValue: (s) => of(s)</b><br />async operations, for static store you can use it for transformer</td>
+</tr>
+
+<tr>
+<th>prefetch</th>
+<td>{param: any}</td>
+<td><b>defaultValue: null </b><br />perform fetch with registration, the data prop goes to fetch argument</td>
 </tr>
 
 <tr>
@@ -69,6 +78,7 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 </table>
 
 ### Refetch & Cache Strategy (For RxQuery only)
+
 <table width="100%">
 <thead>
 <tr>
@@ -80,39 +90,37 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 <tbody>
 
 <tr>
-<th>prefetch</th>
-<td>{param: any}</td>
-<td><b>defaultValue: null </b><br />perform fetch with registration, the data prop goes to fetch argument</td>
-</tr>
-
-<tr>
 <th>refetchOnReconnect</th>
 <td>boolean</td>
-<td><b>defaultValue: false </b><br />perform fetch with registration, the data prop goes to fetch argument.</td>
+<td><b>defaultValue: true </b><br />check staleTime has passed on network reconnection</td>
 </tr>
 
 <tr>
 <th>refetchOnEmerge</th>
 <td>boolean</td>
-<td><b>defaultValue: false </b><br />refetch on window.visibilityChange => document.visibilityState === 'visible'.</td>
+<td><b>defaultValue: true </b><br />check staleTime has passed on window.visibilityChange => document.visibilityState === 'visible'. min switching time between on & off applied</td>
 </tr>
 
 <tr>
 <th>refetchInterval</th>
 <td>number</td>
-<td><b>defaultValue: 24 * 3600 (1 day) </b><br />min value is 2(2seconds)<br />interval calls. restart if query called and successed. unit is second</td>
+<td><b>defaultValue: 24 * 3600 (1 day) </b><br />
+0 for disable interval<br />
+min value is 2(2seconds)<br />interval calls. restart on query successed or erred. unit is second. min switching time between on & off applied</td>
 </tr>
 
 <tr>
-<th>staleModeDuration</th>
+<th>staleTime</th>
 <td>number</td>
-<td><b>defaultValue: 300 (5 minutes) </b><br />duration to perform event of merging refetchOnReconnect & refetchOnEmerge and only if staleModeDuration has passed from last fetch, refetch works. unit is second(5 === 5second)</td>
+<td>
+<b>defaultValue: 60 (1 minute) </b><br />
+ and only if staleTime has passed from last fetch, refetch works. unit is second(5 === 5second)</td>
 </tr>
 
 <tr>
-<th>refetchOnStaleMode</th>
+<th>refetchOnBackground</th>
 <td>boolean</td>
-<td><b>defaultValue: false </b><br />by default, refetch action by refetchInterval does not work when it is on the stale mode, with true, it ignores default and perform refetch</td>
+<td><b>defaultValue: false </b><br />by default, refetch action by refetchInterval does not work when it is on the background mode(+ no network), with true, it ignores default and perform refetch</td>
 </tr>
 
 <tr>
@@ -130,28 +138,22 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 
 <tr>
 <th>paramToHash</th>
-<td>function: (p: param) => string</td>
-<td><b>defaultValue: undefined</b><br />util to get cash hash key from query param, by the hashkey count of cache object varies</td>
-</tr>
-
-<tr>
-<td colspan="3">
-  you can add rxQueryCachingKey key to param for query and it has more priority to get hash.
-</td>
+<td>function: ((p: param) => string) | string</td>
+<td><b>defaultValue: undefined</b><br />util to get cash hash key from query param, check for 1 depth</td>
 </tr>
 </tbody>
 </table>
 
-
 # staticStore
+
 inside store has 2 classes
 one for RxQuery, one for RxStore
 RxQuery is to use refetch & cache strategy
 RxStore is to use storage for cache and you can still transform by query option
 
-
 ## Module Import
 
+<!-- prettier-ignore-start -->
 ```typescript
 
 import { RxNgQueryModule } from 'rx-ng-query';
@@ -232,8 +234,10 @@ export class SomeComponent {
 ```
 
 ## RxNgQueryStore
+
 RxNgQueryStore is the manager and the bridge to each store.
 it provides methods to each store we declared.
+
 <table>
 <thead>
 <tr>
@@ -286,6 +290,12 @@ it provides methods to each store we declared.
 </tr>
 
 <tr>
+<th>response(key: string):Observable&lt;RxQueryResponse&gt;</th>
+<td>both</td>
+<td>only triggered by query success or error</td>
+</tr>
+
+<tr>
 <th>mutate(key: string, fn:&lt;RxQueryStatus['data']&gt;) => &lt;RxQueryStatus['data']&gt;):boolean</th>
 <td>both</td>
 <td>use to manually mutate the data, if the query is executing, it can be denied and the result of success returned</td>
@@ -298,9 +308,9 @@ it provides methods to each store we declared.
 </tr>
 
 <tr>
-<th>refetch(key: string) => void</th>
+<th>reload(key: string) => void</th>
 <td>RxQuery only</td>
-<td>refetch with latest param, it can reset the refetchInterval</td>
+<td>fetch with latest param, internal refetch does not set loading or error flag, but it does.</td>
 </tr>
 
 <tr>
@@ -311,13 +321,12 @@ it provides methods to each store we declared.
 </tbody>
 </table>
 
-
-
-
 ## rxNgSuspense
 
 ### RxQueryStatus
-status(key) 로 해당 스트림을 얻을 수 있다.
+
+status(key) gives you the stream with the following data.
+
 - data: returned data from query
 - ts: timestamp that updated (in case of error, it does not update the ts)
 - error: thrown error from query (it is reset on loading status)
@@ -325,6 +334,7 @@ status(key) 로 해당 스트림을 얻을 수 있다.
 - untrustedData: if data is same as initdata or error on fetch (in case of refetch, it keeps the current one)
 
 ### Crate Template with ng-template
+
 ```html
 // in template
 <div>
@@ -359,10 +369,10 @@ defaultTemplateSort(status: RxQueryStatus<any>){
     if (loading) {
       return 'loading';
     }
-    
+
     return data ? 'content' : 'null';
   }
-  
+
   if (data) {
     return 'content';
   }
@@ -370,3 +380,4 @@ defaultTemplateSort(status: RxQueryStatus<any>){
 }
 ```
 
+<!-- prettier-ignore-end-->

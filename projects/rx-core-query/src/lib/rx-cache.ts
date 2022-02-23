@@ -61,7 +61,7 @@ export class RxCache<A = any> {
   }
 
   onMutate(payload: RxQueryMutateFn<A>) {
-    if (this.loading || this.untrustedData) {
+    if (this.loading) {
       return false;
     }
     const mutated = (payload as RxQueryMutateFn<A>)(this.data);

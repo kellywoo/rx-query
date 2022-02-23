@@ -89,17 +89,16 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 </thead>
 <tbody>
 
-
 <tr>
 <th>refetchOnReconnect</th>
 <td>boolean</td>
-<td><b>defaultValue: false </b><br />perform fetch with registration, the data prop goes to fetch argument.</td>
+<td><b>defaultValue: true </b><br />check staleTime has passed on network reconnection</td>
 </tr>
 
 <tr>
 <th>refetchOnEmerge</th>
 <td>boolean</td>
-<td><b>defaultValue: false </b><br />refetch on window.visibilityChange => document.visibilityState === 'visible'.</td>
+<td><b>defaultValue: true </b><br />check staleTime has passed on window.visibilityChange => document.visibilityState === 'visible'. min switching time between on & off applied</td>
 </tr>
 
 <tr>
@@ -107,21 +106,21 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 <td>number</td>
 <td><b>defaultValue: 24 * 3600 (1 day) </b><br />
 0 for disable interval<br />
-min value is 2(2seconds)<br />interval calls. restart if query called and successed. unit is second</td>
+min value is 2(2seconds)<br />interval calls. restart on query successed or erred. unit is second. min switching time between on & off applied</td>
 </tr>
 
 <tr>
-<th>staleModeDuration</th>
+<th>staleTime</th>
 <td>number</td>
 <td>
-<b>defaultValue: 300 (5 minutes) </b><br />
-duration to perform event of merging refetchOnReconnect & refetchOnEmerge and only if staleModeDuration has passed from last fetch, refetch works. unit is second(5 === 5second)</td>
+<b>defaultValue: 60 (1 minute) </b><br />
+ and only if staleTime has passed from last fetch, refetch works. unit is second(5 === 5second)</td>
 </tr>
 
 <tr>
-<th>refetchOnStaleMode</th>
+<th>refetchOnBackground</th>
 <td>boolean</td>
-<td><b>defaultValue: false </b><br />by default, refetch action by refetchInterval does not work when it is on the stale mode, with true, it ignores default and perform refetch</td>
+<td><b>defaultValue: false </b><br />by default, refetch action by refetchInterval does not work when it is on the background mode(+ no network), with true, it ignores default and perform refetch</td>
 </tr>
 
 <tr>
@@ -139,14 +138,8 @@ duration to perform event of merging refetchOnReconnect & refetchOnEmerge and on
 
 <tr>
 <th>paramToHash</th>
-<td>function: (p: param) => string</td>
-<td><b>defaultValue: undefined</b><br />util to get cash hash key from query param, by the hashkey count of cache object varies</td>
-</tr>
-
-<tr>
-<td colspan="3">
-  you can add rxQueryCachingKey key to param for query and it has more priority to get hash.
-</td>
+<td>function: ((p: param) => string) | string</td>
+<td><b>defaultValue: undefined</b><br />util to get cash hash key from query param, check for 1 depth</td>
 </tr>
 </tbody>
 </table>
@@ -294,6 +287,12 @@ it provides methods to each store we declared.
 <th>status(key: string):Observable&lt;RxQueryStatus&gt;</th>
 <td>both</td>
 <td>select from status.data, selector is mapping function</td>
+</tr>
+
+<tr>
+<th>response(key: string):Observable&lt;RxQueryResponse&gt;</th>
+<td>both</td>
+<td>only triggered by query success or error</td>
 </tr>
 
 <tr>

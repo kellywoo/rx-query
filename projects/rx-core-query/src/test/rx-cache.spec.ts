@@ -79,8 +79,8 @@ describe('RxCache notifyChange calls', () => {
 
   it('notification$ triggers: onMutate', () => {
     const newData = { name: 'Kelly2' };
+    (cache as any).loading = true;
     expect(cache.onMutate(() => newData)).toEqual(false);
-    (cache as any).untrustedData = false;
     (cache as any).loading = false;
     expect(cache.onMutate(() => newData)).toEqual(true);
     expect(notifySpy).toHaveBeenCalledTimes(1);
@@ -89,7 +89,7 @@ describe('RxCache notifyChange calls', () => {
       error: null,
       loading: false,
       data: newData,
-      untrustedData: false,
+      untrustedData: true,
     });
   });
 });

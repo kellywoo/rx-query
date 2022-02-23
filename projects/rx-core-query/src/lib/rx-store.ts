@@ -12,7 +12,7 @@ import {
   tap,
   timer,
 } from 'rxjs';
-import { RxQueryMutateFn, RxQueryOption, RxQueryStatus } from './rx-query.model';
+import { RxQueryMutateFn, RxQueryOption, RxQueryResponse, RxQueryStatus } from './rx-query.model';
 import { RxQueryNotifier, RxStoreOptionSchemed } from './rx-query.schemed.model';
 import { shallowEqualDepth } from './rx-query.util';
 import { getRxConstSettings, RxConst } from './rx-const';
@@ -26,42 +26,79 @@ export abstract class RxStoreAbstract<A, B> {
   protected abstract readonly retryDelay: number;
   protected abstract readonly RX_CONST: RxConst;
   protected abstract readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
+  protected abstract readonly cacheState: RxState;
+  protected abstract readonly response$: Subject<RxQueryResponse<A>>;
 
   protected abstract latestParam?: B;
+  protected abstract fetched: boolean;
 
   protected unSupportedError = (name: string) => {
     return new Error(`not supporting method for rxstore: ${name}`);
   };
 
+  public readonly select = <T>(selector?: (s: A) => T) => {
+    return this.cacheState.getState().pipe(
+      map((state) => {
+        return selector ? selector(state.data) : (state.data as unknown as T);
+      }),
+      distinctUntilChanged((a, b) => this.isEqual(a, b, 1)),
+    );
+  };
+
+  public readonly response = () => {
+    return this.response$.asObservable();
+  };
+
+  public readonly status: () => Observable<RxQueryStatus<A>> = () => {
+    // whole
+    return this.cacheState.getState().pipe(distinctUntilChanged((a, b) => this.isEqual(a, b, 2)));
+  };
+
   public readonly getInitData = () => {
     return this.initState;
   };
-  public abstract readonly select: <T>(selector?: (s: A) => T) => Observable<T>;
-  public abstract readonly status: () => Observable<RxQueryStatus<A>>;
+
+  public readonly mutate = (payload: RxQueryMutateFn<A>) => {
+    return this.cacheState.getCurrentCache().onMutate(payload);
+  };
+
+  public readonly getAliveCacheState = () => {
+    return this.cacheState?.alive ? this.cacheState : null;
+  };
+
+  public readonly reload = () => {
+    if (!this.fetched) {
+      return;
+    }
+    this.fetch(this.latestParam);
+  };
+
+  public readonly getCurrentState = () => {
+    return this.cacheState.getCurrentCache().getCurrentData();
+  };
+
   public abstract readonly fetch: (payload?: any) => void;
   public abstract readonly reset: () => void;
-  public abstract readonly reload: () => void;
-  public abstract readonly mutate: (payload: RxQueryMutateFn<A>) => boolean;
   public abstract readonly destroy: () => void;
   public abstract readonly disableRefetch: (disable: boolean) => void;
-  public abstract readonly getAliveCacheState: () => null | RxState<A>;
 }
 
 export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
-  protected readonly trigger$: Subject<{ param?: B; cache: RxCache<A> }> = new Subject();
   protected readonly key: string;
   protected readonly initState: A;
   protected readonly retry: number;
   protected readonly retryDelay: number;
-  protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected readonly query: RxStoreOptionSchemed<A, B>['query'];
+  protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected readonly RX_CONST: RxConst;
+  protected readonly response$: RxStoreAbstract<A, B>['response$'] = new Subject();
+  protected readonly cacheState: RxState<A>;
   protected latestParam?: B;
+  protected fetched = false;
 
-  private readonly cacheState: RxState<A>;
+  private readonly trigger$: Subject<{ param: B; cache: RxCache<A> }> = new Subject();
   private readonly keepAlive: boolean;
   private readonly destroy$ = new Subject<void>();
-  private fetched = false;
 
   constructor(
     options: RxQueryOption<A, B>,
@@ -97,11 +134,12 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     this.trigger$
       .pipe(
         debounceTime(0), // prevent multi request for one
-        switchMap(({ param, cache }: { param?: B; cache: RxCache<A> }) => {
+        switchMap(({ param, cache }: { param: B; cache: RxCache<A> }) => {
           let retryTimes = this.retry;
           return this.query(param).pipe(
             tap((res) => {
               cache.onSuccess(res);
+              this.response$.next({ type: 'success', refetch: false, data: res, param });
             }),
             catchError((err, caught) => {
               if (retryTimes > 0) {
@@ -109,6 +147,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
                 return timer(this.retryDelay).pipe(switchMap(() => caught));
               } else {
                 cache.onError(err);
+                this.response$.next({ type: 'error', refetch: false, data: err, param });
                 return EMPTY;
               }
             }),
@@ -136,33 +175,12 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     };
   }
 
-  public readonly select = <T>(selector?: (s: A) => T) => {
-    return this.cacheState.getState().pipe(
-      map((state) => {
-        return selector ? selector(state.data) : (state.data as unknown as T);
-      }),
-      distinctUntilChanged((a, b) => this.isEqual(a, b, 1)),
-    );
-  };
-
-  public readonly status: () => Observable<RxQueryStatus<A>> = () => {
-    // whole
-    return this.cacheState.getState().pipe(distinctUntilChanged((a, b) => this.isEqual(a, b, 2)));
-  };
-
   public readonly fetch = (payload?: B) => {
     this.latestParam = payload;
     this.fetched = true;
     const currentCache = this.cacheState.getCache(INIT_CACHE_KEY)!;
     currentCache.prepareFetching();
-    this.trigger$.next({ param: payload, cache: currentCache });
-  };
-
-  public readonly reload = () => {
-    if (!this.fetched) {
-      return;
-    }
-    this.fetch(this.latestParam);
+    this.trigger$.next({ param: payload!, cache: currentCache });
   };
 
   public readonly reset = () => {
@@ -174,14 +192,11 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     return this.unSupportedError('disableRefetch') as never;
   };
 
-  public readonly mutate = (payload: RxQueryMutateFn<A>) => {
-    return this.cacheState.getCurrentCache().onMutate(payload);
-  };
-
   public readonly destroy = () => {
     this.destroy$.next();
     this.destroy$.complete();
     this.trigger$.complete();
+    this.response$.complete();
     if (this.keepAlive) {
       this.cacheState.freeze();
     } else {
@@ -190,9 +205,5 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     if (this.notifiers.destroy$) {
       this.notifiers.destroy$.next(this.key);
     }
-  };
-
-  public readonly getAliveCacheState = () => {
-    return this.cacheState?.alive ? this.cacheState : null;
   };
 }
