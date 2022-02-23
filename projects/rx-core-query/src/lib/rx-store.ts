@@ -61,6 +61,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
   private readonly cacheState: RxState<A>;
   private readonly keepAlive: boolean;
   private readonly destroy$ = new Subject<void>();
+  private fetched = false;
 
   constructor(
     options: RxQueryOption<A, B>,
@@ -151,16 +152,21 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
 
   public readonly fetch = (payload?: B) => {
     this.latestParam = payload;
+    this.fetched = true;
     const currentCache = this.cacheState.getCache(INIT_CACHE_KEY)!;
     currentCache.prepareFetching();
     this.trigger$.next({ param: payload, cache: currentCache });
   };
 
   public readonly reload = () => {
+    if (!this.fetched) {
+      return;
+    }
     this.fetch(this.latestParam);
   };
 
   public readonly reset = () => {
+    this.fetched = false;
     this.cacheState.reset();
   };
 

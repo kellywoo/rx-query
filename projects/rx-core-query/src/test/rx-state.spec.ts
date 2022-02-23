@@ -1,7 +1,7 @@
-import { INIT_CACHE_KEY, RxState } from 'rx-ng-query';
-import {RxCache} from "../lib/rx-cache";
+import { INIT_CACHE_KEY, RxState } from 'rx-core-query';
+import { RxCache } from '../lib/rx-cache';
 import SpyInstance = jest.SpyInstance;
-import {BehaviorSubject} from "rxjs";
+import { BehaviorSubject } from 'rxjs';
 
 describe('RxState basic', () => {
   const option = { max: 5, min: 3, key: 'test' };
@@ -45,10 +45,9 @@ describe('RxState basic', () => {
     expect(cache3).not.toBe(cache4);
     expect(rxState.cacheQueue.length).toEqual(3);
   });
-
 });
 
-describe('RxState freeze & destroy', ()=>{
+describe('RxState freeze & destroy', () => {
   const option = { max: 5, min: 3, key: 'test' };
   const initState = {};
   let rxState!: any;
@@ -62,8 +61,8 @@ describe('RxState freeze & destroy', ()=>{
     rxState.connect({ cacheKey: INIT_CACHE_KEY, dataEasing: false });
     cache = rxState.createAndSwitch([]);
     initCache = rxState.initCache;
-    cacheDestroy = jest.spyOn(cache, 'destroy')
-    initCacheDestroy = jest.spyOn(initCache, 'destroy')
+    cacheDestroy = jest.spyOn(cache, 'destroy');
+    initCacheDestroy = jest.spyOn(initCache, 'destroy');
     state$ = rxState.state$;
   });
   it('rxState freeze', () => {
@@ -86,4 +85,4 @@ describe('RxState freeze & destroy', ()=>{
     expect(cacheDestroy).toHaveBeenCalledTimes(1);
     expect(initCacheDestroy).toHaveBeenCalledTimes(1);
   });
-})
+});

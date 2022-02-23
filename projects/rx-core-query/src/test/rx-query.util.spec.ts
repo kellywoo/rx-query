@@ -1,4 +1,4 @@
-import {autobind, deepEqual, shallowEqualDepth} from 'rx-ng-query';
+import { autobind, deepEqual, shallowEqualDepth } from 'rx-core-query';
 
 describe('autobind', () => {
   class Hello {
@@ -43,7 +43,6 @@ function createObject(org: any, num: number, child?: any): any {
 }
 
 describe('deepEqual', () => {
-
   it('should same', () => {
     const a = createObject({}, 20);
     const b = createObject({}, 20);
@@ -56,7 +55,6 @@ describe('deepEqual', () => {
   });
 
   it('should not same for different depth', () => {
-
     const a = createObject({}, 20);
     const b = createObject({}, 21);
     expect(deepEqual(a, b)).toBe(false);
@@ -74,20 +72,19 @@ describe('deepEqual', () => {
   });
 });
 
-
 describe('shallowEqualDepth', () => {
   it('should not same for different depth', () => {
     class S {}
     class S1 extends S {}
 
-    const a = {}
+    const a = {};
     const b = 5;
     const c = new Date();
     const d = Symbol();
     const e = new S();
     const f = new S1();
-    const A = {a, b, c, d, e, f};
-    const B =  {a, b, c, d, e, f};
+    const A = { a, b, c, d, e, f };
+    const B = { a, b, c, d, e, f };
     expect(shallowEqualDepth(A, B)).toBe(true);
   });
 
