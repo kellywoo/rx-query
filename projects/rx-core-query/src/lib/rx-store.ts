@@ -44,7 +44,7 @@ export abstract class RxStoreAbstract<A, B> {
   public abstract readonly mutate: (payload: RxQueryMutateFn<A>) => boolean;
   public abstract readonly destroy: () => void;
   public abstract readonly disableRefetch: (disable: boolean) => void;
-  public abstract readonly getKeepAlivedState: () => null | RxState;
+  public abstract readonly getAliveCacheState: () => null | RxState<A>;
 }
 
 export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
@@ -192,7 +192,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     }
   };
 
-  public readonly getKeepAlivedState = () => {
+  public readonly getAliveCacheState = () => {
     return this.cacheState?.alive ? this.cacheState : null;
   };
 }

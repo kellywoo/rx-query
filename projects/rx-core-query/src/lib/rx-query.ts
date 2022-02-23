@@ -369,7 +369,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     }
   };
 
-  public readonly getKeepAlivedState = () => {
+  public readonly getAliveCacheState = () => {
     return this.cacheState?.alive ? this.cacheState : null;
   };
 }

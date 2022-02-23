@@ -40,7 +40,7 @@ export class RxNgQueryStore<A extends RxNgState> {
     this.notifiers.destroy$!.subscribe((key) => {
       const store = this.state[key];
       if (store) {
-        const cache = store.getKeepAlivedState();
+        const cache = store.getAliveCacheState();
         if (cache) {
           this.caches[key as keyof A] = cache;
         } else {
