@@ -8,7 +8,7 @@ const getCurrentStatus = (store: any) => {
 const notifier: RxQueryNotifier = {
   destroy$: new Subject(),
   online$: new Subject(),
-  visibilityChange$: new Subject(),
+  windowActive$: new Subject(),
 };
 
 describe('RxStore default props', () => {

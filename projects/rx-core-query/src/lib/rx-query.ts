@@ -119,7 +119,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
 
   private subscribeStaleMode() {
     combineLatest([
-      merge(of(document.visibilityState === 'visible'), this.notifiers.visibilityChange$),
+      merge(of(document.visibilityState === 'visible'), this.notifiers.windowActive$),
       merge(of(navigator.onLine), this.notifiers.online$),
     ])
       .pipe(
@@ -260,7 +260,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     }
     if (this.refetchOnEmerge) {
       this.refetchSubscription.add(
-        this.subscribeRezoom(this.notifiers.visibilityChange$, this.RX_CONST.minValidFocusTime),
+        this.subscribeRezoom(this.notifiers.windowActive$, this.RX_CONST.minValidFocusTime),
       );
     }
     if (this.refetchInterval > 0) {

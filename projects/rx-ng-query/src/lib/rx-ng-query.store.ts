@@ -26,7 +26,7 @@ export class RxNgQueryStore<A extends RxNgState> {
     map((e) => e.type === 'online'),
     share(),
   );
-  private visibilityChange$ = fromEvent(document, 'visibilitychange').pipe(
+  private windowActive$ = fromEvent(document, 'visibilitychange').pipe(
     map(() => document.visibilityState === 'visible'),
     distinctUntilChanged(),
     share(),
@@ -34,7 +34,7 @@ export class RxNgQueryStore<A extends RxNgState> {
   private notifiers: RxQueryNotifier = Object.freeze({
     destroy$: new Subject<string>(),
     online$: this.online$,
-    visibilityChange$: this.visibilityChange$,
+    windowActive$: this.windowActive$,
   });
 
   constructor() {

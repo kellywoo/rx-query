@@ -31,5 +31,5 @@ export interface RxQueryOptionSchemed<A, B>
 export interface RxQueryNotifier {
   destroy$: Subject<string>;
   online$: Observable<boolean>;
-  visibilityChange$: Observable<boolean>;
+  windowActive$: Observable<boolean>;
 }
