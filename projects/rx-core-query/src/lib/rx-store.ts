@@ -79,12 +79,12 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
     this.keepAlive = keepAlive;
     this.retryDelay = retryDelay;
     this.cacheState =
-      this.keepAlive && cacheState
+      cacheState instanceof RxState && cacheState?.alive
         ? cacheState
         : new RxState<A>({ max: 0, min: 0, key: this.key }, this.initState);
     this.cacheState.connect({
       cacheKey: this.getCacheKey(),
-      dataEasing: true,
+      dataEasing: false,
     });
     this.initQueryStream();
     if (prefetch) {
@@ -107,6 +107,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
                 retryTimes--;
                 return timer(this.retryDelay).pipe(switchMap(() => caught));
               } else {
+                cache.onError(err);
                 return EMPTY;
               }
             }),
@@ -150,7 +151,9 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
 
   public readonly fetch = (payload?: B) => {
     this.latestParam = payload;
-    this.trigger$.next({ param: payload, cache: this.cacheState.getCache(INIT_CACHE_KEY)! });
+    const currentCache = this.cacheState.getCache(INIT_CACHE_KEY)!;
+    currentCache.prepareFetching();
+    this.trigger$.next({ param: payload, cache: currentCache });
   };
 
   public readonly reload = () => {

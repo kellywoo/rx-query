@@ -10,6 +10,7 @@ export class RxCache<A = any> {
   private untrustedData = true;
   private status$;
   private stop$ = new Subject<void>();
+  private origin?: { ts: number; data: A };
 
   constructor(public cacheKey: any, private initData: A) {
     this.data = initData;
@@ -49,6 +50,7 @@ export class RxCache<A = any> {
     this.data = isSame ? this.data : data;
     this.untrustedData = false;
     this.notifyChange();
+    this.origin = { ts: this.ts, data };
   }
 
   onError(err: Error) {

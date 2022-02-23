@@ -18,6 +18,7 @@
     "importHelpers": true,
     "paths": {
       "rx-ng-query": ["projects/rx-ng-query.main.ts"],
+      "rx-core-query": ["projects/rx-core-query.main.ts"]
     },
     "target": "es2017",
     "module": "es2020",

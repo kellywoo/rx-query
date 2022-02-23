@@ -102,7 +102,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.paramToCachingKey = paramToCachingKey;
     this.subscribeStaleMode();
     this.cacheState =
-      this.keepAlive && cacheState
+      cacheState instanceof RxState && cacheState?.alive
         ? cacheState
         : new RxState<A>(
             { max: caching, min: this.RX_CONST.defaultCaching, key: this.key },
