@@ -132,21 +132,21 @@ min value is 2(2seconds)<br />interval calls. restart on query successed or erre
 <tr>
 <th>caching</th>
 <td>number</td>
-<td><b>defaultValue: 0(cache only one for initial hash)</b><br />min: 0, max: 50<br />number of caching for previous response. max is 30</td>
+<td><b>defaultValue: 0(cache only one for initial hash)</b><br />min: 0, max: 50<br />number of caching for previous response.</td>
 </tr>
 <tr>
 
 <tr>
 <th>minValidReconnectTime</th>
 <td>number</td>
-<td><b>defaultValue: 12(cache only one for initial hash)</b><br />min valid reconnect time, if connection gets off and reconnection happens before it, does not consider reconnect event</td>
+<td><b>defaultValue: 12</b><br />min valid reconnect time, if connection gets off and reconnection happens before it, does not consider reconnect event</td>
 </tr>
 <tr>
 
 <tr>
 <th>minValidFocusTime</th>
 <td>number</td>
-<td><b>defaultValue: 60(cache only one for initial hash)</b><br />min valid focus time, if window gets blurred and focused before it, does not consider focus event</td>
+<td><b>defaultValue: 60</b><br />min valid focus time, if window gets blurred and focused before it, does not consider focus event</td>
 </tr>
 <tr>
 

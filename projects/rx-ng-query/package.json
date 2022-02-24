@@ -1,6 +1,6 @@
 {
   "name": "rx-ng-query",
-  "version": "0.0.5",
+  "version": "0.0.5-test",
   "repository": {
     "type": "git",
     "url": "https://github.com/kellywoo/rx-query/tree/master/projects/rx-ng-query"
