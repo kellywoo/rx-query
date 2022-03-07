@@ -1,3 +1,5 @@
+import { of } from 'rxjs';
+
 export interface RxConst {
   maxCaching: number;
   defaultCaching: number;
@@ -22,9 +24,9 @@ const DEFAULT_VALUE: RxConst = Object.freeze({
   minValidFocusTime: 60,
 });
 
-export const getRxConstSettings = ((mutation?: Partial<RxConst>) => {
+export const getRxConstSettings = (() => {
   let readonlyValue: RxConst;
-  return () => {
+  return (mutation?: Partial<RxConst>) => {
     if (readonlyValue) {
       return readonlyValue;
     }
@@ -32,3 +34,5 @@ export const getRxConstSettings = ((mutation?: Partial<RxConst>) => {
     return readonlyValue;
   };
 })();
+
+export const defaultQuery = <A, B>(a?: B) => of(a as unknown as A);

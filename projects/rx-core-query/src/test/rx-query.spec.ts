@@ -1,10 +1,19 @@
-import { RxQueryNotifier, RxStore, shallowEqualDepth } from 'rx-core-query';
+import {
+  getDefaultRxQueryOption,
+  RxQuery,
+  RxQueryNotifier,
+  RxQueryOption,
+  RxState,
+  shallowEqualDepth,
+} from 'rx-core-query';
 import { map, of, Subject, throwError } from 'rxjs';
+import { defaultQuery } from '../lib/rx-const';
 import Expect = jest.Expect;
 
 const getCurrentStatus = (store: any) => {
   return store.cacheState.getCurrentCache().getCurrentData();
 };
+
 const notifier: RxQueryNotifier = {
   destroy$: new Subject(),
   online$: new Subject(),
@@ -12,34 +21,91 @@ const notifier: RxQueryNotifier = {
   isDev: true,
 };
 
-describe('RxStore default props', () => {
-  const option = {
-    key: 'store',
-    initState: {},
-    retry: 0,
-    retryDelay: 0,
+const createRxQuery = (
+  params: RxQueryOption<any, any>,
+  option?: {
+    notifiers?: RxQueryNotifier;
+    cacheState?: RxState;
+    keepRefetchInterval?: boolean;
+  },
+) => {
+  const store = new RxQuery(params, option?.notifiers || notifier, option?.cacheState) as any;
+  if (!option?.keepRefetchInterval) {
+    store.refetchInterval$.complete();
+  }
+  return store as any;
+};
+describe('getDefaultRxQueryOption', () => {
+  const rxconst = {
+    maxCaching: 50,
+    defaultCaching: 0,
+    defaultRetry: 2,
+    defaultRetryDelay: 3,
+    defaultInterval: 24 * 3600,
+    staleTime: 60,
+    minRefetchTime: 5,
+    minValidReconnectTime: 12,
+    minValidFocusTime: 60,
   };
 
-  it('check default props & state', () => {
-    const store = new RxStore(option, notifier) as any;
-    const destroyNext = jest.spyOn(notifier.destroy$, 'next');
-    expect(store.key).toBe(option.key);
-    expect(store.initState).toBe(option.initState);
-    expect(store.keepAlive).toBe(false);
-    expect(store.isEqual).toBe(shallowEqualDepth);
-    expect(store.retry).toBe(0);
-    expect(store.retryDelay).toBe(0);
-    expect(typeof store.query).toBe('function');
-    expect(store.cacheState).toBeTruthy();
-    expect(store.cacheState.getCurrentCache()).toBe(store.cacheState.initCache);
-    expect(getCurrentStatus(store).data).toBe(option.initState);
-    store.destroy();
-    expect(destroyNext).toHaveBeenCalledTimes(1);
-    expect(destroyNext).toHaveBeenCalledWith(option.key);
+  it('check default props1', () => {
+    const option = {
+      key: 'store',
+      initState: {},
+      retry: 0,
+      retryDelay: 0,
+      refetchInterval: 0,
+      minValidFocusTime: 0,
+      minValidReconnectTime: 0,
+    };
+    const fixedOption = getDefaultRxQueryOption(option, rxconst);
+    expect(fixedOption.key).toBe(option.key);
+    expect(fixedOption.query).toBe(defaultQuery);
+    expect(fixedOption.initState).toBe(option.initState);
+    expect(fixedOption.prefetch).toBe(null);
+    expect(fixedOption.isEqual).toBe(shallowEqualDepth);
+    expect(fixedOption.keepAlive).toBe(false);
+    expect(fixedOption.retry).toBe(0);
+    expect(fixedOption.retryDelay).toBe(0);
+    expect(fixedOption.dataEasing).toBe(false);
+    expect(fixedOption.paramToCachingKey).toBe(undefined);
+    expect(fixedOption.refetchOnEmerge).toBe(true);
+    expect(fixedOption.refetchOnReconnect).toBe(true);
+    expect(fixedOption.refetchOnBackground).toBe(false);
+    expect(fixedOption.minValidFocusTime).toBe(0);
+    expect(fixedOption.minValidReconnectTime).toBe(0);
+    expect(fixedOption.staleTime).toBe(rxconst.staleTime);
+    expect(fixedOption.refetchInterval).toBe(0);
+    expect(fixedOption.caching).toBe(0);
+  });
+
+  it('check default min max', () => {
+    const option = {
+      key: 'store',
+      initState: {},
+      refetchInterval: 2,
+      paramToCachingKey: 'hello',
+      refetchOnEmerge: false,
+      refetchOnReconnect: false,
+      refetchOnBackground: false,
+    };
+    const fixedOption = getDefaultRxQueryOption(option, rxconst);
+    expect(fixedOption.query).toBe(defaultQuery);
+    expect(fixedOption.retry).toBe(2);
+    expect(fixedOption.retryDelay).toBe(3);
+    expect(typeof fixedOption.paramToCachingKey).toBe('function');
+    expect(fixedOption.refetchOnEmerge).toBe(false);
+    expect(fixedOption.refetchOnReconnect).toBe(false);
+    expect(fixedOption.refetchOnBackground).toBe(false);
+    expect(fixedOption.minValidFocusTime).toBe(rxconst.minValidFocusTime);
+    expect(fixedOption.minValidReconnectTime).toBe(rxconst.minValidReconnectTime);
+    expect(fixedOption.staleTime).toBe(rxconst.staleTime);
+    expect(fixedOption.refetchInterval).toBe(5);
+    expect(fixedOption.caching).toBe(0);
   });
 });
 
-describe('RxStore options for state', () => {
+describe('RxQuery options for state', () => {
   beforeAll(() => {
     jest.useFakeTimers();
   });
@@ -59,8 +125,8 @@ describe('RxStore options for state', () => {
     jest.clearAllMocks();
   });
 
-  it('RxStore prefetch works', () => {
-    const store = new RxStore({ ...defaultOption, query, prefetch: { param } }, notifier) as any;
+  it('RxQuery prefetch works', () => {
+    const store = createRxQuery({ ...defaultOption, query, prefetch: { param } }) as any;
     jest.runAllTimers();
     expect(query).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenCalledWith(param);
@@ -68,35 +134,43 @@ describe('RxStore options for state', () => {
     store.destroy();
   });
 
-  it('RxStore keepAlive works', () => {
-    const store = new RxStore(
-      { ...defaultOption, query, keepAlive: true, prefetch: { param } },
-      notifier,
-    ) as any;
+  it('RxQuery keepAlive works', () => {
+    const store = createRxQuery({
+      ...defaultOption,
+      query,
+      keepAlive: true,
+      prefetch: { param },
+    });
     jest.runAllTimers();
     store.destroy();
     expect(store.cacheState.alive).toBe(true);
 
-    const store1 = new RxStore(
-      { ...defaultOption, keepAlive: false, prefetch: { param } },
-      notifier,
-      store.cacheState,
-    ) as any;
+    const store1 = createRxQuery(
+      {
+        ...defaultOption,
+        keepAlive: false,
+        prefetch: { param },
+      },
+      {
+        cacheState: store.cacheState,
+      },
+    );
     expect(getCurrentStatus(store1).data).toBe(res);
     store1.destroy();
     expect(store.cacheState.alive).toBe(false);
 
-    const store2 = new RxStore(
+    const store2 = createRxQuery(
       { ...defaultOption, keepAlive: false, prefetch: { param } },
-      notifier,
-      store.cacheState,
-    ) as any;
+      {
+        cacheState: store.cacheState,
+      },
+    );
     expect(getCurrentStatus(store2).data).toBe(defaultOption.initState);
     store2.destroy();
   });
 });
 
-describe('RxStore: retry', () => {
+describe('RxQuery: retry', () => {
   beforeAll(() => {
     jest.useFakeTimers();
   });
@@ -104,10 +178,10 @@ describe('RxStore: retry', () => {
     jest.useRealTimers();
   });
   const defaultOption = {
-    key: 'store retry',
+    key: 'query retry',
     initState: {},
   };
-  it('RxStore Error: retry works', () => {
+  it('RxQuery Error: retry works', () => {
     const param = {};
     const retry = 3;
     const mockFn = jest.fn((m) => m);
@@ -118,7 +192,7 @@ describe('RxStore: retry', () => {
           throw Error('error');
         }),
       );
-    const store = new RxStore({ ...defaultOption, query, retry, retryDelay: 0 }, notifier) as any;
+    const store = createRxQuery({ ...defaultOption, query, retry, retryDelay: 0 });
     store.fetch(param);
     jest.runAllTimers();
     expect(mockFn).toHaveBeenCalledTimes(retry + 1);
@@ -127,7 +201,7 @@ describe('RxStore: retry', () => {
     store.destroy();
   });
 
-  it('RxStore Error: retry does not happen with 0', () => {
+  it('RxQuery Error: retry does not happen with 0', () => {
     const param = {};
     const retry = 0;
     const mockFn = jest.fn((m) => m);
@@ -138,7 +212,7 @@ describe('RxStore: retry', () => {
           throw Error('error');
         }),
       );
-    const store = new RxStore({ ...defaultOption, query, retry, retryDelay: 0 }, notifier) as any;
+    const store = createRxQuery({ ...defaultOption, query, retry, retryDelay: 0 });
     store.fetch(param);
     jest.runAllTimers();
     expect(mockFn).toHaveBeenCalledTimes(retry + 1);
@@ -148,7 +222,7 @@ describe('RxStore: retry', () => {
   });
 });
 
-describe('RxStore: fetch', () => {
+describe('RxQuery: fetch', () => {
   beforeAll(() => {
     jest.useFakeTimers();
   });
@@ -181,7 +255,7 @@ describe('RxStore: fetch', () => {
       }
     };
 
-    const store = new RxStore({ ...option, query }, notifier);
+    const store = createRxQuery({ ...option, query });
     const status: any[] = [];
     const select: any[] = [];
     const response: any[] = [];
@@ -257,7 +331,7 @@ describe('RxStore: fetch', () => {
   });
 });
 
-describe('RxStore: mutate', () => {
+describe('RxQuery: mutate', () => {
   const option = {
     key: 'store fetch',
     initState: { id: 0 },
@@ -265,8 +339,8 @@ describe('RxStore: mutate', () => {
     retryDelay: 0,
   };
 
-  it('change status by mutate', () => {
-    const store = new RxStore<{ id: number }>(option, notifier) as any;
+  it('change status by mutate should cause error', () => {
+    const store = createRxQuery(option);
     const status: any[] = [];
     const select: any[] = [];
     store.cacheState.getCurrentCache().untrustedData = false;

@@ -11,6 +11,7 @@ export class RxCache<A = any> {
   private status$;
   private stop$ = new Subject<void>();
   private origin?: { ts: number; data: A };
+  private param: any;
 
   constructor(public cacheKey: any, private initData: A) {
     this.data = initData;
@@ -24,7 +25,11 @@ export class RxCache<A = any> {
     );
   }
 
-  reset(data: A) {
+  public getLatestParam(): { param: any } | null {
+    return this.ts === 0 ? null : { param: this.param };
+  }
+
+  public reset(data: A) {
     this.data = data;
     this.ts = 0;
     this.error = null;
@@ -32,17 +37,18 @@ export class RxCache<A = any> {
     this.untrustedData = true;
   }
 
-  isSameKey(cacheKey: any) {
+  public isSameKey(cacheKey: any) {
     return shallowEqualDepth(this.cacheKey, cacheKey, 1);
   }
 
-  prepareFetching() {
+  public prepareFetching(param: any) {
+    this.param = param;
     this.loading = true;
     this.error = null;
     this.notifyChange();
   }
 
-  onSuccess(data: A) {
+  public onSuccess(data: A) {
     const isSame = deepEqual(this.data, data);
     this.loading = false;
     this.ts = Date.now();
@@ -53,26 +59,31 @@ export class RxCache<A = any> {
     this.origin = { ts: this.ts, data };
   }
 
-  onError(err: Error) {
+  public onError(err: Error) {
     this.loading = false;
     this.error = err;
     this.untrustedData = true;
     this.notifyChange();
   }
 
-  onMutate(payload: RxQueryMutateFn<A>) {
+  public onMutate(payload: RxQueryMutateFn<A>) {
     if (this.loading) {
       return false;
     }
     const mutated = (payload as RxQueryMutateFn<A>)(this.data);
     if (!shallowEqualDepth(mutated, this.data, 1)) {
       this.data = mutated;
+      this.untrustedData = true;
       this.notifyChange();
     }
     return true;
   }
 
-  getCurrentData(): RxQueryStatus<A> {
+  public isLoading() {
+    return this.loading;
+  }
+
+  public getCurrentData(): RxQueryStatus<A> {
     return {
       ts: this.ts,
       error: this.error,
@@ -86,11 +97,11 @@ export class RxCache<A = any> {
     this.status$.next(this.getCurrentData());
   }
 
-  unNotify() {
+  public unNotify() {
     this.stop$.next();
   }
 
-  destroy() {
+  public destroy() {
     (this.data as unknown) = null;
     this.stop$.next();
     this.stop$.complete();

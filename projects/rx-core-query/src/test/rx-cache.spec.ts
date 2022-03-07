@@ -40,7 +40,8 @@ describe('RxCache notifyChange calls', () => {
   });
 
   it('notification$ triggers: prepareFetching', () => {
-    cache.prepareFetching();
+    const param = {};
+    cache.prepareFetching(param);
     expect(notifySpy).toHaveBeenCalledTimes(1);
     expect(cache.getCurrentData()).toEqual({
       ts: 0,
@@ -96,11 +97,20 @@ describe('RxCache notifyChange calls', () => {
 
 describe('RxCache unNotify', () => {
   const initData = { name: 'kelly' };
-  const cache = new RxCache('key', initData);
-  it('notification stops when with unNotify', ()=>{
+  it('notification stops when with unNotify', () => {
+    const cache = new RxCache('key', initData);
     const subs = cache.notification$.subscribe();
     expect(subs.closed).toBe(false);
     cache.unNotify();
     expect(subs.closed).toBe(true);
-  })
+  });
+
+  it('getLatestParam', () => {
+    const param = {} as any;
+    const cache = new RxCache('key', initData);
+    (cache as any).param = param;
+    expect(cache.getLatestParam()).toEqual(null);
+    (cache as any).ts = 10;
+    expect(cache.getLatestParam()).toEqual({ param });
+  });
 });

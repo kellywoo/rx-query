@@ -5,7 +5,6 @@ import {
   EMPTY,
   map,
   Observable,
-  of,
   Subject,
   switchMap,
   takeUntil,
@@ -15,7 +14,7 @@ import {
 import { RxQueryMutateFn, RxQueryOption, RxQueryResponse, RxQueryStatus } from './rx-query.model';
 import { RxQueryNotifier, RxStoreOptionSchemed } from './rx-query.schemed.model';
 import { shallowEqualDepth } from './rx-query.util';
-import { getRxConstSettings, RxConst } from './rx-const';
+import { defaultQuery, getRxConstSettings, RxConst } from './rx-const';
 import { INIT_CACHE_KEY, RxState } from './rx-state';
 import { RxCache } from './rx-cache';
 
@@ -29,11 +28,10 @@ export abstract class RxStoreAbstract<A, B> {
   protected abstract readonly cacheState: RxState;
   protected abstract readonly response$: Subject<RxQueryResponse<A>>;
 
-  protected abstract latestParam?: B;
   protected abstract fetched: boolean;
 
   protected unSupportedError = (name: string) => {
-    return new Error(`not supporting method for rxstore: ${name}`);
+    throw new TypeError(`not supporting method for rxstore: ${name}`);
   };
 
   public readonly select = <T>(selector?: (s: A) => T) => {
@@ -70,7 +68,12 @@ export abstract class RxStoreAbstract<A, B> {
     if (!this.fetched) {
       return;
     }
-    this.fetch(this.latestParam);
+    const param = this.cacheState.getCurrentCache().getLatestParam();
+    if (param) {
+      this.fetch(param.param);
+    } else {
+      console.error('you should fetch before reload');
+    }
   };
 
   public readonly getCurrentState = () => {
@@ -93,7 +96,6 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
   protected readonly RX_CONST: RxConst;
   protected readonly response$: RxStoreAbstract<A, B>['response$'] = new Subject();
   protected readonly cacheState: RxState<A>;
-  protected latestParam?: B;
   protected fetched = false;
 
   private readonly trigger$: Subject<{ param: B; cache: RxCache<A> }> = new Subject();
@@ -171,15 +173,14 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
       isEqual: options.isEqual || shallowEqualDepth,
       retry: options.retry ?? this.RX_CONST.defaultRetry,
       retryDelay: options.retryDelay ?? this.RX_CONST.defaultRetryDelay,
-      query: options.query || ((a?: B) => of(a as unknown as A)),
+      query: options.query || defaultQuery,
     };
   }
 
   public readonly fetch = (payload?: B) => {
-    this.latestParam = payload;
     this.fetched = true;
     const currentCache = this.cacheState.getCache(INIT_CACHE_KEY)!;
-    currentCache.prepareFetching();
+    currentCache.prepareFetching(payload);
     this.trigger$.next({ param: payload!, cache: currentCache });
   };
 

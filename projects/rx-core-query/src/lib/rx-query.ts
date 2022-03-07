@@ -17,7 +17,7 @@ import {
   tap,
   timer,
 } from 'rxjs';
-import { RxQueryOption } from './rx-query.model';
+import { RxQueryMutateFn, RxQueryOption } from './rx-query.model';
 import {
   RxQueryNotifier,
   RxQueryOptionSchemed,
@@ -27,7 +27,54 @@ import { RxStoreAbstract } from './rx-store';
 import { shallowEqualDepth } from './rx-query.util';
 import { INIT_CACHE_KEY, RxState } from './rx-state';
 import { RxCache } from './rx-cache';
-import { getRxConstSettings, RxConst } from './rx-const';
+import { defaultQuery, getRxConstSettings, RxConst } from './rx-const';
+
+export const getDefaultRxQueryOption = <A = any, B = any>(
+  options: RxQueryOption<A, B>,
+  rxConst: RxConst,
+): RxQueryOptionSchemed<A, B> => {
+  const {
+    staleTime,
+    defaultRetryDelay,
+    defaultRetry,
+    defaultCaching,
+    defaultInterval,
+    minRefetchTime,
+    maxCaching,
+    minValidFocusTime,
+    minValidReconnectTime,
+  } = rxConst;
+
+  return {
+    key: options.key,
+    query: options.query || defaultQuery,
+    initState: options.initState,
+    prefetch: options.prefetch || null,
+    isEqual: options.isEqual || shallowEqualDepth,
+    keepAlive: options.keepAlive || false,
+    retry: options.retry ?? defaultRetry,
+    retryDelay: options.retryDelay ?? defaultRetryDelay,
+    dataEasing: options.dataEasing || false,
+    paramToCachingKey:
+      typeof options.paramToCachingKey === 'string'
+        ? (() => {
+            const key = options.paramToCachingKey;
+            return (param: any) => param[key];
+          })()
+        : options.paramToCachingKey,
+    refetchOnEmerge: options.refetchOnEmerge !== false,
+    refetchOnReconnect: options.refetchOnReconnect !== false,
+    refetchOnBackground: options.refetchOnBackground || false,
+    minValidFocusTime: options.minValidFocusTime ?? minValidFocusTime,
+    minValidReconnectTime: options.minValidReconnectTime ?? minValidReconnectTime,
+    staleTime: options.staleTime ?? staleTime,
+    refetchInterval:
+      options.refetchInterval === 0
+        ? 0
+        : Math.max(options.refetchInterval || defaultInterval, minRefetchTime), // does not take 0
+    caching: Math.min(Math.max(options.caching || defaultCaching, 0), maxCaching),
+  };
+};
 
 export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   protected readonly key: string;
@@ -39,22 +86,20 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   protected readonly RX_CONST: RxConst;
   protected readonly response$: RxStoreAbstract<A, B>['response$'] = new Subject();
   protected readonly cacheState: RxState;
-  protected latestParam?: B;
   protected fetched = false;
 
+  private readonly trigger$: Subject<{ refetch: boolean; cache: RxCache; param: B }> =
+    new Subject();
+  private readonly keepAlive: boolean;
+  private readonly destroy$ = new Subject<void>();
+
+  private readonly refetchInterval$ = new Subject<number>();
   private readonly refetchInterval: number;
   private readonly refetchOnReconnect: boolean;
   private readonly refetchOnEmerge: boolean;
   private readonly staleTime: number;
   private readonly refetchOnBackground: boolean;
-  private readonly keepAlive: boolean;
   private readonly paramToCachingKey?: (p: any) => any;
-
-  private readonly trigger$: Subject<{ refetch: boolean; cache: RxCache; param: B }> =
-    new Subject();
-  private readonly refetchInterval$ = new Subject<number>();
-  private readonly destroy$ = new Subject<void>();
-
   private refetchDisabled = false;
   private isOnBackground = false;
   private refetchSubscription?: Subscription;
@@ -88,7 +133,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       paramToCachingKey,
       query,
       isEqual,
-    } = this.getDefaultOption(options);
+    } = getDefaultRxQueryOption<A, B>(options, this.RX_CONST);
     this.key = key;
     this.query = query;
     this.initState = Object.freeze(initState);
@@ -120,6 +165,8 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.initQueryStream();
     if (prefetch) {
       this.fetch(prefetch.param);
+    } else if (this.cacheState === cacheState) {
+      this.refetch();
     }
   }
 
@@ -185,50 +232,6 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     return param;
   }
 
-  private getDefaultOption(options: RxQueryOption<A, B>): RxQueryOptionSchemed<A, B> {
-    const {
-      staleTime,
-      defaultRetryDelay,
-      defaultRetry,
-      defaultCaching,
-      defaultInterval,
-      minRefetchTime,
-      maxCaching,
-      minValidFocusTime,
-      minValidReconnectTime,
-    } = this.RX_CONST;
-
-    return {
-      key: options.key,
-      query: options.query || ((a?: B) => of(a as unknown as A)),
-      initState: options.initState,
-      prefetch: options.prefetch || null,
-      isEqual: options.isEqual || shallowEqualDepth,
-      keepAlive: options.keepAlive || false,
-      retry: options.retry ?? defaultRetry,
-      retryDelay: options.retryDelay ?? defaultRetryDelay,
-      dataEasing: options.dataEasing || false,
-      paramToCachingKey:
-        typeof options.paramToCachingKey === 'string'
-          ? (() => {
-              const key = options.paramToCachingKey;
-              return (param: any) => param[key];
-            })()
-          : options.paramToCachingKey,
-      refetchOnEmerge: options.refetchOnEmerge !== false,
-      refetchOnReconnect: options.refetchOnReconnect !== false,
-      refetchOnBackground: options.refetchOnBackground || false,
-      minValidFocusTime: options.minValidFocusTime ?? minValidFocusTime,
-      minValidReconnectTime: options.minValidReconnectTime ?? minValidReconnectTime,
-      staleTime: options.staleTime ?? staleTime,
-      refetchInterval:
-        options.refetchInterval === 0
-          ? 0
-          : Math.max(options.refetchInterval || defaultInterval, minRefetchTime), // does not take 0
-      caching: Math.min(Math.max(options.caching || defaultCaching, 0), maxCaching),
-    };
-  }
-
   private subscribeRezoom(target$: Observable<boolean>, duration: number) {
     return target$
       .pipe(
@@ -247,9 +250,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         }),
       )
       .subscribe(() => {
-        if (this.lastSuccessTime + duration < Date.now()) {
-          this.refetch();
-        }
+        this.refetch();
       });
   }
 
@@ -283,10 +284,6 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
             takeUntil(this.destroy$),
           )
           .subscribe(() => {
-            if (this.refetchDisabled || (this.isOnBackground && !this.refetchOnBackground)) {
-              this.refetchInterval$.next(this.refetchInterval);
-              return;
-            }
             this.refetch();
           }),
       );
@@ -297,21 +294,28 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     this.setRefetchStrategy(true);
     const cacheKey = this.getCacheKey(param);
     const cache = this.cacheState.createAndSwitch(cacheKey);
-    const state = cache.getCurrentData();
-    this.latestParam = param;
-    if (state.ts === 0 || Date.now() > state.ts + this.staleTime) {
-      cache.prepareFetching();
-      this.trigger$.next({ cache, param: param!, refetch: false });
-    }
+    cache.prepareFetching(param);
+    this.trigger$.next({ cache, param: param!, refetch: false });
   };
 
   private readonly refetch = () => {
-    if (!this.fetched || this.refetchDisabled) {
+    if (this.refetchDisabled || (this.isOnBackground && !this.refetchOnBackground)) {
+      this.refetchInterval$.next(this.refetchInterval);
+      return;
+    }
+    const cache = this.cacheState.getCurrentCache();
+    const state = cache.getCurrentData();
+    const param = cache.getLatestParam();
+    if (state.loading || !param) {
+      return;
+    }
+    const stillValid = Date.now() < state.ts + this.staleTime;
+    if (stillValid && !state.untrustedData) {
       return;
     }
     this.trigger$.next({
-      cache: this.cacheState.getCurrentCache(),
-      param: this.latestParam!,
+      cache,
+      param: param.param,
       refetch: true,
     });
   };
@@ -328,7 +332,6 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   public readonly destroy = () => {
     this.refetchInterval$.complete();
     this.setRefetchStrategy(false);
-
     this.destroy$.next();
     this.destroy$.complete();
     this.trigger$.complete();
@@ -341,5 +344,9 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     if (this.notifiers.destroy$) {
       this.notifiers.destroy$.next(this.key);
     }
+  };
+
+  public override readonly mutate = (payload: RxQueryMutateFn<A>) => {
+    return this.cacheState.getCurrentCache().onMutate(payload);
   };
 }

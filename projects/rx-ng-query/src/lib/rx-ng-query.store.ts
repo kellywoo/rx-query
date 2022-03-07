@@ -1,4 +1,3 @@
-import { Injectable } from '@angular/core';
 import { distinctUntilChanged, fromEvent, map, merge, Observable, share, Subject } from 'rxjs';
 import {
   RxQuery,
@@ -11,15 +10,17 @@ import {
   RxState,
   RxQueryMutateFn,
   RxQueryResponse,
+  RxConst,
+  getRxConstSettings,
 } from '../../../rx-core-query.main';
 
 export interface RxNgState {
   [key: string]: any;
 }
 
-@Injectable({ providedIn: 'root' })
+export type RxNgQueryStoreConfig = Partial<RxQueryNotifier & RxConst>;
+
 export class RxNgQueryStore<A extends RxNgState> {
-  isDev = false;
   private state: Partial<{ [key in keyof A]: RxStoreAbstract<any, any> }> = {};
   private caches: Partial<{ [key in keyof A]: RxState }> = {};
   private online$ = merge(fromEvent(window, 'online'), fromEvent(window, 'offline')).pipe(
@@ -31,13 +32,31 @@ export class RxNgQueryStore<A extends RxNgState> {
     distinctUntilChanged(),
     share(),
   );
-  private notifiers: RxQueryNotifier = Object.freeze({
+  private notifiers: RxQueryNotifier = Object.seal({
     destroy$: new Subject<string>(),
     online$: this.online$,
     windowActive$: this.windowActive$,
+    isDev: false,
   });
 
-  constructor() {
+  private updateConfig(config?: RxNgQueryStoreConfig) {
+    if (!config) return;
+    const notifierKeys = Object.keys(this.notifiers);
+    const rxConst: Partial<RxConst> = {};
+    Object.entries(config).forEach(([key, value]) => {
+      if (notifierKeys.includes(key) && value instanceof Observable) {
+        this.notifiers[key as keyof RxQueryNotifier] = value as any;
+      } else {
+        rxConst[key as keyof RxConst] = value as any;
+      }
+    });
+    if (Object.keys(rxConst).length) {
+      getRxConstSettings(rxConst);
+    }
+  }
+
+  constructor(config?: RxNgQueryStoreConfig) {
+    this.updateConfig(config);
     this.notifiers.destroy$!.subscribe((key) => {
       const store = this.state[key];
       if (store) {
@@ -55,7 +74,7 @@ export class RxNgQueryStore<A extends RxNgState> {
   }
 
   @autobind
-  registerStore(options: RxQueryOption<any, any>) {
+  public registerStore(options: RxQueryOption<any, any>) {
     const key = options.key as keyof A;
     if (this.state[key]) {
       console.warn(
@@ -73,7 +92,7 @@ export class RxNgQueryStore<A extends RxNgState> {
     if (this.state[key]) {
       return this.state[key] as RxStoreAbstract<any, any>;
     }
-    throw Error(`the store of key(${key}) seems not existing.`);
+    throw TypeError(`the store of key(${key}) seems not existing.`);
   }
 
   @autobind
@@ -83,6 +102,7 @@ export class RxNgQueryStore<A extends RxNgState> {
 
   @autobind
   public unregisterStore(key: keyof A) {
+    console.log(key);
     this.getStore(key).destroy();
   }
 

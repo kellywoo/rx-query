@@ -34,4 +34,5 @@ export interface RxQueryNotifier {
   destroy$: Subject<string>;
   online$: Observable<boolean>;
   windowActive$: Observable<boolean>;
+  isDev: boolean;
 }

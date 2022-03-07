@@ -2,6 +2,7 @@
  * Public API Surface of rxquery
  */
 
+export { RxConst, getRxConstSettings } from './rx-core-query/src/lib/rx-const';
 export * from './rx-core-query/src/lib/rx-store';
 export * from './rx-core-query/src/lib/rx-query';
 export * from './rx-core-query/src/lib/rx-query.util';

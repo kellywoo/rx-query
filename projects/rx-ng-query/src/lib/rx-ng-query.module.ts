@@ -1,28 +1,37 @@
 import { InjectionToken, Injector, ModuleWithProviders, NgModule, Optional } from '@angular/core';
-import { RxNgQueryStore } from './rx-ng-query.store';
+import { RxNgQueryStore, RxNgQueryStoreConfig } from './rx-ng-query.store';
 import { RxNgSuspenseDirective } from './rx-ng-suspense.directive';
 import { RxQueryOption } from '../../../rx-core-query.main';
 
-const STORE = new RxNgQueryStore<any>();
+let STORE: RxNgQueryStore<any>;
 const StoreInitToken = new InjectionToken('@@@@::ng_query_init');
-export const StoreDevToken = new InjectionToken('@@@@::ng_is_dev');
+export const StoreConfigToken = new InjectionToken('@@@@::ng_query_config');
+
+const ngQueryStoreProvider = {
+  provide: RxNgQueryStore,
+  useFactory: (config?: RxNgQueryStoreConfig, initSource?: any) => {
+    if (!STORE) {
+      STORE = new RxNgQueryStore(config);
+    }
+    if (initSource) {
+      initSource.forEach((source: RxQueryOption<any, any>) => {
+        if (!STORE.has(source.key)) {
+          STORE.registerStore(source);
+        }
+      });
+    }
+    return STORE;
+  },
+  deps: [
+    [new Optional(), StoreConfigToken],
+    [new Optional(), StoreInitToken],
+  ],
+};
 
 @NgModule({
   declarations: [RxNgSuspenseDirective],
   exports: [RxNgSuspenseDirective],
-  providers: [
-    {
-      provide: RxNgQueryStore,
-      useFactory: (init?: any, isDev?: boolean) => {
-        STORE.isDev = isDev || false;
-        return STORE;
-      },
-      deps: [
-        [new Optional(), StoreInitToken],
-        [new Optional(), StoreDevToken],
-      ],
-    },
-  ],
+  providers: [ngQueryStoreProvider],
 })
 export class RxNgQueryModule {
   static getStore() {
@@ -40,25 +49,13 @@ export class RxNgQueryModule {
           provide: StoreInitToken,
           useFactory(injector: Injector) {
             if (source) {
-              const initSource = deps
-                ? source(...deps.map((type) => injector.get(type)))
-                : source();
-              initSource.forEach((sc) => {
-                STORE.registerStore(sc);
-              });
+              return deps ? source(...deps.map((type) => injector.get(type))) : source();
             }
-            return true;
+            return [];
           },
           deps: [Injector],
         },
-        {
-          provide: RxNgQueryStore,
-          useFactory(init: any, isDev = false) {
-            STORE.isDev = isDev;
-            return STORE;
-          },
-          deps: [StoreInitToken, [new Optional(), StoreDevToken]],
-        },
+        ngQueryStoreProvider,
       ],
     };
   }

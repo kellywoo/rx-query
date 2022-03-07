@@ -1,49 +1,6 @@
-import { Component, Injectable, OnDestroy } from '@angular/core';
-import { RxNgService, RxNgQuery, RxNgQueryStore, RxQueryStatus } from 'rx-ng-query';
-import { Observable } from 'rxjs';
-import { fromFetch } from 'rxjs/fetch';
-
-export const USER_CACHE_TYPE = {
-  user: 'user',
-} as const;
-
-@Injectable()
-@RxNgService()
-export class AppUserStore implements OnDestroy {
-  constructor(private rxStore: RxNgQueryStore<any>) {
-    // static manual store..
-    this.rxStore.registerStore({
-      key: 'static',
-      initState: 3,
-      staticStore: true,
-    });
-  }
-
-  @RxNgQuery({
-    key: USER_CACHE_TYPE.user,
-    prefetch: { param: null },
-    refetchInterval: 300,
-    refetchOnReconnect: true,
-    refetchOnEmerge: true,
-    initState: null,
-  })
-  fetchUser() {
-    return fromFetch('https://jsonplaceholder.typicode.com/users/1', {
-      selector: (res) => {
-        return res.json();
-      },
-    });
-  }
-
-  selectUserStatus(): Observable<RxQueryStatus<any>> {
-    // to get data and api meta info
-    return this.rxStore.status(USER_CACHE_TYPE.user);
-  }
-
-  ngOnDestroy() {
-    this.rxStore.unregisterStore(USER_CACHE_TYPE.user);
-  }
-}
+import { Component } from '@angular/core';
+import { RxQueryStatus } from 'rx-ng-query';
+import { AppUserStore } from './user.service';
 
 @Component({
   selector: 'my-app',

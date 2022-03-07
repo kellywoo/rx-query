@@ -2,6 +2,7 @@ import { RxNgQueryModule } from './rx-ng-query.module';
 import { RxQueryOption, RxStoreOption, RxQueryOptionSchemed } from '../../../rx-core-query.main';
 
 const INNER_DATA_KEY = Symbol();
+const INNER_STORE_KEY = Symbol();
 
 export function RxNgQuery(meta: Omit<RxQueryOption<any, any>, 'staticStore'>) {
   return function (ClassRef: any, key: string, descriptor: TypedPropertyDescriptor<any>) {
@@ -11,6 +12,8 @@ export function RxNgQuery(meta: Omit<RxQueryOption<any, any>, 'staticStore'>) {
     }
     ClassRef.constructor[INNER_DATA_KEY] = ClassRef.constructor[INNER_DATA_KEY] || [];
     ClassRef.constructor[INNER_DATA_KEY].push(key);
+    ClassRef.constructor[INNER_STORE_KEY] = ClassRef.constructor[INNER_STORE_KEY] || [];
+    ClassRef.constructor[INNER_STORE_KEY].push(meta.key);
     return {
       configurable: false,
       enumerable: false,
@@ -47,6 +50,8 @@ export function RxNgStore(meta: RxStoreOption<any, any>) {
     }
     ClassRef.constructor[INNER_DATA_KEY] = ClassRef.constructor[INNER_DATA_KEY] || [];
     ClassRef.constructor[INNER_DATA_KEY].push(key);
+    ClassRef.constructor[INNER_STORE_KEY] = ClassRef.constructor[INNER_STORE_KEY] || [];
+    ClassRef.constructor[INNER_STORE_KEY].push(meta.key);
     return {
       configurable: false,
       enumerable: false,
@@ -78,13 +83,29 @@ export function RxNgStore(meta: RxStoreOption<any, any>) {
 
 // https://github.com/angular/angular/issues/38966
 export function RxNgService() {
-  return function <T extends { new (...args: any[]): {}; [INNER_DATA_KEY]?: string[] }>(
-    constructor: T,
-  ) {
+  return function <
+    T extends {
+      new (...args: any[]): {};
+      [INNER_DATA_KEY]?: string[];
+      [INNER_STORE_KEY]?: string[];
+    },
+  >(constructor: T) {
+    const destroy = constructor.prototype.ngOnDestroy;
+    constructor.prototype.ngOnDestroy = function () {
+      const globalStore = RxNgQueryModule.getStore();
+      if (destroy) {
+        destroy.apply(this);
+      }
+      (constructor[INNER_STORE_KEY] || []).forEach((key: string) => {
+        if (globalStore.has(key)) {
+          globalStore.unregisterStore(key);
+        }
+      });
+    };
     return new Proxy(constructor, {
       construct(clz, args) {
         const instance = Reflect.construct(clz, args);
-        (clz[INNER_DATA_KEY] || []).forEach((props: string) => instance[props]);
+        (clz[INNER_DATA_KEY] || []).forEach((key: string) => instance[key]);
         return instance;
       },
     });

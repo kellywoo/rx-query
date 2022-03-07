@@ -52,10 +52,5 @@
       "eslint --ext .ts ./src --fix",
       "prettier --write"
     ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
   }
 }
