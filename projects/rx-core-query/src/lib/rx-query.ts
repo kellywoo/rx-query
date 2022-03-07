@@ -303,7 +303,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
       this.refetchInterval$.next(this.refetchInterval);
       return;
     }
-    const cache = this.cacheState.getCurrentCache();
+    const cache = this.getCurrentCache();
     const state = cache.getCurrentData();
     const param = cache.getLatestParam();
     if (state.loading || !param) {
@@ -347,6 +347,6 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   };
 
   public override readonly mutate = (payload: RxQueryMutateFn<A>) => {
-    return this.cacheState.getCurrentCache().onMutate(payload);
+    return this.getCurrentCache().onMutate(payload);
   };
 }

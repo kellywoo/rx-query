@@ -56,8 +56,12 @@ export abstract class RxStoreAbstract<A, B> {
     return this.initState;
   };
 
+  public getCurrentCache() {
+    return this.cacheState.getCurrentCache();
+  }
+
   public readonly mutate = (payload: RxQueryMutateFn<A>) => {
-    return this.cacheState.getCurrentCache().onMutate(payload);
+    return this.getCurrentCache().onMutate(payload);
   };
 
   public readonly getAliveCacheState = () => {
@@ -68,7 +72,7 @@ export abstract class RxStoreAbstract<A, B> {
     if (!this.fetched) {
       return;
     }
-    const param = this.cacheState.getCurrentCache().getLatestParam();
+    const param = this.getCurrentCache().getLatestParam();
     if (param) {
       this.fetch(param.param);
     } else {
@@ -77,7 +81,7 @@ export abstract class RxStoreAbstract<A, B> {
   };
 
   public readonly getCurrentState = () => {
-    return this.cacheState.getCurrentCache().getCurrentData();
+    return this.getCurrentCache().getCurrentData();
   };
 
   public abstract readonly fetch: (payload?: any) => void;

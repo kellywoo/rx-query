@@ -3,7 +3,7 @@ import { map, of, Subject, throwError } from 'rxjs';
 import Expect = jest.Expect;
 
 const getCurrentStatus = (store: any) => {
-  return store.cacheState.getCurrentCache().getCurrentData();
+  return store.getCurrentCache().getCurrentData();
 };
 const notifier: RxQueryNotifier = {
   destroy$: new Subject(),
@@ -31,7 +31,7 @@ describe('RxStore default props', () => {
     expect(store.retryDelay).toBe(0);
     expect(typeof store.query).toBe('function');
     expect(store.cacheState).toBeTruthy();
-    expect(store.cacheState.getCurrentCache()).toBe(store.cacheState.initCache);
+    expect(store.getCurrentCache()).toBe(store.cacheState.initCache);
     expect(getCurrentStatus(store).data).toBe(option.initState);
     store.destroy();
     expect(destroyNext).toHaveBeenCalledTimes(1);
@@ -269,7 +269,7 @@ describe('RxStore: mutate', () => {
     const store = new RxStore<{ id: number }>(option, notifier) as any;
     const status: any[] = [];
     const select: any[] = [];
-    store.cacheState.getCurrentCache().untrustedData = false;
+    store.getCurrentCache().untrustedData = false;
     store.status().subscribe((s: any) => {
       status.push(s);
     });

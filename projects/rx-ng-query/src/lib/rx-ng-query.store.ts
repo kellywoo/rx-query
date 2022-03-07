@@ -102,7 +102,6 @@ export class RxNgQueryStore<A extends RxNgState> {
 
   @autobind
   public unregisterStore(key: keyof A) {
-    console.log(key);
     this.getStore(key).destroy();
   }
 

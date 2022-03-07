@@ -11,7 +11,7 @@ import { defaultQuery } from '../lib/rx-const';
 import Expect = jest.Expect;
 
 const getCurrentStatus = (store: any) => {
-  return store.cacheState.getCurrentCache().getCurrentData();
+  return store.getCurrentCache().getCurrentData();
 };
 
 const notifier: RxQueryNotifier = {
@@ -343,7 +343,7 @@ describe('RxQuery: mutate', () => {
     const store = createRxQuery(option);
     const status: any[] = [];
     const select: any[] = [];
-    store.cacheState.getCurrentCache().untrustedData = false;
+    store.getCurrentCache().untrustedData = false;
     store.status().subscribe((s: any) => {
       status.push(s);
     });
@@ -371,5 +371,144 @@ describe('RxQuery: mutate', () => {
       expect(select[v]).toEqual({ id: v });
     });
     store.destroy();
+  });
+});
+
+describe('RxQuery: refetchInterval', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
+  const param = {};
+  const res = 'hello';
+  const query = jest.fn().mockImplementation(() => of(res));
+  const option = {
+    key: 'store',
+    initState: {},
+    refetchInterval: 2,
+    paramToCachingKey: 'hello',
+    refetchOnEmerge: false,
+    refetchOnReconnect: false,
+    refetchOnBackground: false,
+    query,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('refetchInterval$ should be called with interval milliseconds after fetch', () => {
+    const store = createRxQuery({ ...option, refetchInterval: 3 });
+    const spy = jest.spyOn(store.refetchInterval$, 'next');
+    store.fetch(param);
+    jest.runAllTimers();
+    expect(spy.mock.calls).toEqual([[3000]]);
+  });
+});
+
+describe('RxQuery: refetch should not call query when', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
+  const param = {};
+  const res = 'hello';
+  const query = jest.fn().mockImplementation(() => of(res));
+  const option = {
+    key: 'store',
+    initState: {},
+    refetchInterval: 2,
+    paramToCachingKey: 'hello',
+    refetchOnEmerge: false,
+    refetchOnReconnect: false,
+    refetchOnBackground: false,
+    query,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('refetchDisabled', () => {
+    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const triggerSpy = jest.spyOn(store.trigger$, 'next');
+    const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
+    store.fetch(param);
+    jest.runAllTimers();
+    triggerSpy.mockClear();
+    refetchIntervalSpy.mockClear();
+    jest.advanceTimersByTime(61000);
+
+    store.refetchDisabled = true;
+    store.refetch();
+    jest.runAllTimers();
+    expect(triggerSpy).toHaveBeenCalledTimes(0);
+    expect(refetchIntervalSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('onBackground without forcedBackgroundRefetch', () => {
+    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const triggerSpy = jest.spyOn(store.trigger$, 'next');
+    const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
+    store.fetch(param);
+    jest.runAllTimers();
+    triggerSpy.mockClear();
+    refetchIntervalSpy.mockClear();
+    jest.advanceTimersByTime(61000);
+
+    store.isOnBackground = true;
+    store.refetch();
+    jest.runAllTimers();
+    expect(triggerSpy).toHaveBeenCalledTimes(0);
+    expect(refetchIntervalSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('isLoading for current cache', () => {
+    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const triggerSpy = jest.spyOn(store.trigger$, 'next');
+    const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
+    store.fetch(param);
+    jest.runAllTimers();
+    triggerSpy.mockClear();
+    refetchIntervalSpy.mockClear();
+    jest.advanceTimersByTime(61000);
+
+    store.getCurrentCache().loading = true;
+    store.refetch();
+    jest.runAllTimers();
+    expect(triggerSpy).toHaveBeenCalledTimes(0);
+    expect(refetchIntervalSpy).toHaveBeenCalledTimes(0);
+  });
+
+  it('not fetched cache', () => {
+    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const triggerSpy = jest.spyOn(store.trigger$, 'next');
+    const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
+
+    store.refetch();
+    jest.runAllTimers();
+    expect(triggerSpy).toHaveBeenCalledTimes(0);
+    expect(refetchIntervalSpy).toHaveBeenCalledTimes(0);
+  });
+
+  it('still valid', () => {
+    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const triggerSpy = jest.spyOn(store.trigger$, 'next');
+    const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
+    store.fetch(param);
+    jest.runAllTimers();
+    triggerSpy.mockClear();
+    refetchIntervalSpy.mockClear();
+
+    store.refetch();
+    jest.runAllTimers();
+    expect(triggerSpy).toHaveBeenCalledTimes(0);
+    expect(refetchIntervalSpy).toHaveBeenCalledTimes(0);
   });
 });
