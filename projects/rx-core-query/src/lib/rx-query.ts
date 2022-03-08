@@ -5,6 +5,7 @@ import {
   distinctUntilChanged,
   EMPTY,
   filter,
+  from,
   map,
   merge,
   Observable,
@@ -17,7 +18,7 @@ import {
   tap,
   timer,
 } from 'rxjs';
-import { RxQueryMutateFn, RxQueryOption } from './rx-query.model';
+import { RxQueryMutateFn, RxQueryOption, RxQueryResponse } from './rx-query.model';
 import {
   RxQueryNotifier,
   RxQueryOptionSchemed,
@@ -29,7 +30,7 @@ import { INIT_CACHE_KEY, RxState } from './rx-state';
 import { RxCache } from './rx-cache';
 import { defaultQuery, getRxConstSettings, RxConst } from './rx-const';
 
-export const getDefaultRxQueryOption = <A = any, B = any>(
+export const getDefaultRxQueryOption = <A = unknown, B = unknown>(
   options: RxQueryOption<A, B>,
   rxConst: RxConst,
 ): RxQueryOptionSchemed<A, B> => {
@@ -76,7 +77,7 @@ export const getDefaultRxQueryOption = <A = any, B = any>(
   };
 };
 
-export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
+export class RxQuery<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
   protected readonly key: string;
   protected readonly initState: Readonly<A>;
   protected readonly retry: number;
@@ -91,7 +92,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   private readonly trigger$: Subject<{ refetch: boolean; cache: RxCache; param: B }> =
     new Subject();
   private readonly keepAlive: boolean;
-  private readonly destroy$ = new Subject<void>();
+  private readonly destroy$ = new Subject<undefined>();
 
   private readonly refetchInterval$ = new Subject<number>();
   private readonly refetchInterval: number;
@@ -136,11 +137,11 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
     } = getDefaultRxQueryOption<A, B>(options, this.RX_CONST);
     this.key = key;
     this.query = query;
-    this.initState = Object.freeze(initState);
+    this.initState = Object.freeze(initState) as A;
     this.refetchInterval = refetchInterval * 1000;
-    this.retry = retry;
     this.retryDelay = retryDelay * 1000;
     this.staleTime = staleTime * 1000;
+    this.retry = retry;
     this.refetchOnBackground = refetchOnBackground;
     this.refetchOnReconnect = refetchOnReconnect;
     this.refetchOnEmerge = refetchOnEmerge;
@@ -194,12 +195,19 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
         switchMap(
           ({ param, cache, refetch }: { param: B; cache: RxCache<A>; refetch: boolean }) => {
             let retryTimes = this.retry;
-            return this.query(param).pipe(
-              tap((res) => {
+            const querySource = this.query(param);
+            const query$ = querySource instanceof Observable ? querySource : from(querySource);
+            return query$.pipe(
+              tap((res: A) => {
                 cache.onSuccess(res);
                 this.lastSuccessTime = Date.now();
                 this.refetchInterval$.next(this.refetchInterval);
-                this.response$.next({ type: 'success', refetch, data: res, param });
+                this.response$.next({
+                  type: 'success' as RxQueryResponse<A, B>['type'],
+                  refetch,
+                  data: res,
+                  param,
+                });
               }),
               catchError((err, caught) => {
                 if (retryTimes > 0 && !this.isOnBackground) {
@@ -210,7 +218,12 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
                     cache.onError(err);
                   }
                   this.refetchInterval$.next(this.refetchInterval);
-                  this.response$.next({ type: 'error', refetch, data: err, param });
+                  this.response$.next({
+                    type: 'error' as RxQueryResponse<A, B>['type'],
+                    refetch,
+                    data: err,
+                    param,
+                  });
                   return EMPTY;
                 }
               }),
@@ -332,7 +345,7 @@ export class RxQuery<A, B = any> extends RxStoreAbstract<A, B> {
   public readonly destroy = () => {
     this.refetchInterval$.complete();
     this.setRefetchStrategy(false);
-    this.destroy$.next();
+    this.destroy$.next(undefined);
     this.destroy$.complete();
     this.trigger$.complete();
     this.response$.complete();

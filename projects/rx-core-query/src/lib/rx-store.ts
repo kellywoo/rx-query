@@ -3,6 +3,7 @@ import {
   debounceTime,
   distinctUntilChanged,
   EMPTY,
+  from,
   map,
   Observable,
   Subject,
@@ -18,7 +19,7 @@ import { defaultQuery, getRxConstSettings, RxConst } from './rx-const';
 import { INIT_CACHE_KEY, RxState } from './rx-state';
 import { RxCache } from './rx-cache';
 
-export abstract class RxStoreAbstract<A, B> {
+export abstract class RxStoreAbstract<A = unknown, B = unknown> {
   protected abstract readonly key: string;
   protected abstract readonly initState: A;
   protected abstract readonly retry: number;
@@ -26,7 +27,7 @@ export abstract class RxStoreAbstract<A, B> {
   protected abstract readonly RX_CONST: RxConst;
   protected abstract readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
   protected abstract readonly cacheState: RxState;
-  protected abstract readonly response$: Subject<RxQueryResponse<A>>;
+  protected abstract readonly response$: Subject<RxQueryResponse<A, B>>;
 
   protected abstract fetched: boolean;
 
@@ -90,7 +91,7 @@ export abstract class RxStoreAbstract<A, B> {
   public abstract readonly disableRefetch: (disable: boolean) => void;
 }
 
-export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
+export class RxStore<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
   protected readonly key: string;
   protected readonly initState: A;
   protected readonly retry: number;
@@ -104,7 +105,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
 
   private readonly trigger$: Subject<{ param: B; cache: RxCache<A> }> = new Subject();
   private readonly keepAlive: boolean;
-  private readonly destroy$ = new Subject<void>();
+  private readonly destroy$ = new Subject<undefined>();
 
   constructor(
     options: RxQueryOption<A, B>,
@@ -142,10 +143,17 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
         debounceTime(0), // prevent multi request for one
         switchMap(({ param, cache }: { param: B; cache: RxCache<A> }) => {
           let retryTimes = this.retry;
-          return this.query(param).pipe(
+          const querySource = this.query(param);
+          const query$ = querySource instanceof Observable ? querySource : from(querySource);
+          return query$.pipe(
             tap((res) => {
               cache.onSuccess(res);
-              this.response$.next({ type: 'success', refetch: false, data: res, param });
+              this.response$.next({
+                type: 'success' as RxQueryResponse<A, B>['type'],
+                refetch: false,
+                data: res,
+                param,
+              });
             }),
             catchError((err, caught) => {
               if (retryTimes > 0) {
@@ -153,7 +161,12 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
                 return timer(this.retryDelay).pipe(switchMap(() => caught));
               } else {
                 cache.onError(err);
-                this.response$.next({ type: 'error', refetch: false, data: err, param });
+                this.response$.next({
+                  type: 'error' as RxQueryResponse<A, B>['type'],
+                  refetch: false,
+                  data: err,
+                  param,
+                });
                 return EMPTY;
               }
             }),
@@ -198,7 +211,7 @@ export class RxStore<A, B = A> extends RxStoreAbstract<A, B> {
   };
 
   public readonly destroy = () => {
-    this.destroy$.next();
+    this.destroy$.next(undefined);
     this.destroy$.complete();
     this.trigger$.complete();
     this.response$.complete();

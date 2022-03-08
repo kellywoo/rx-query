@@ -12,7 +12,7 @@ export interface RxStoreOptionSchemed<A, B = A> {
   retry: number;
   retryDelay: number;
   keepAlive: boolean;
-  query: (s?: B) => Observable<A>;
+  query: (s?: B) => Observable<A> | Promise<A>;
   prefetch?: RxQueryParam<B> | null;
 }
 

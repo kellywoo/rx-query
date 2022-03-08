@@ -2,7 +2,7 @@ import { Observable } from 'rxjs';
 
 export type RxQueryMutateFn<S> = (t: S) => S;
 
-export type RxQueryStatus<A> = {
+export type RxQueryStatus<A = unknown> = {
   /**
    * @description last successful updating time
    * default is 0
@@ -27,14 +27,14 @@ export type RxQueryStatus<A> = {
   untrustedData?: boolean;
 };
 
-export type RxQueryResponse<A> = {
+export type RxQueryResponse<A = unknown, B = unknown> = {
   type: 'error' | 'success';
   data: A | Error;
   refetch: boolean;
-  param: any;
+  param: B;
 };
 
-export interface RxStoreOption<A, B> {
+export interface RxStoreOption<A = unknown, B = unknown> {
   /**
    * @description store key
    **/
@@ -56,7 +56,7 @@ export interface RxStoreOption<A, B> {
   /**
    * @description query for fetch or any asynchronous operation
    **/
-  query?: null | ((s?: B) => Observable<A>);
+  query?: null | ((s?: B) => Observable<A> | Promise<A>);
   /**
    * @description retry times for error
    **/
@@ -72,7 +72,7 @@ export interface RxStoreOption<A, B> {
   keepAlive?: boolean;
 }
 
-export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
+export interface RxQueryOption<A = unknown, B = unknown> extends RxStoreOption<A, B> {
   /**
    * @description ignore any refetch and cache strategy
    **/
@@ -125,4 +125,4 @@ export interface RxQueryOption<A, B> extends RxStoreOption<A, B> {
   minValidFocusTime?: number;
 }
 
-export type RxQueryParam<B> = { param?: B; refetch?: boolean };
+export type RxQueryParam<B = unknown> = { param?: B; refetch?: boolean };

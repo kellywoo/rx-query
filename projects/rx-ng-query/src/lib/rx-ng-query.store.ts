@@ -21,8 +21,8 @@ export interface RxNgState {
 export type RxNgQueryStoreConfig = Partial<RxQueryNotifier & RxConst>;
 
 export class RxNgQueryStore<A extends RxNgState> {
-  private state: Partial<{ [key in keyof A]: RxStoreAbstract<any, any> }> = {};
-  private caches: Partial<{ [key in keyof A]: RxState }> = {};
+  private state: { [key in keyof A]?: RxStoreAbstract<unknown, unknown> } = {};
+  private caches: { [key in keyof A]?: RxState } = {};
   private online$ = merge(fromEvent(window, 'online'), fromEvent(window, 'offline')).pipe(
     map((e) => e.type === 'online'),
     share(),
@@ -88,41 +88,41 @@ export class RxNgQueryStore<A extends RxNgState> {
       : new RxQuery(options, this.notifiers, cache);
   }
 
-  private getStore(key: keyof A) {
+  private getStore<T extends keyof A>(key: T) {
     if (this.state[key]) {
-      return this.state[key] as RxStoreAbstract<any, any>;
+      return this.state[key] as RxStoreAbstract<Pick<A, T>[T], unknown>;
     }
     throw TypeError(`the store of key(${key}) seems not existing.`);
   }
 
   @autobind
-  public has(key: keyof A) {
+  public has<T extends keyof A>(key: T) {
     return Boolean(this.state[key]);
   }
 
   @autobind
-  public unregisterStore(key: keyof A) {
-    this.getStore(key).destroy();
+  public unregisterStore<T extends keyof A>(key: T) {
+    this.getStore<T>(key).destroy();
   }
 
   @autobind
-  public getInitData(key: keyof A) {
-    return this.getStore(key).getInitData();
+  public getInitData<T extends keyof A>(key: T) {
+    return this.getStore<T>(key).getInitData();
   }
 
   @autobind
-  public reset(key: keyof A) {
-    return this.getStore(key).reset();
+  public reset<T extends keyof A>(key: T) {
+    return this.getStore<T>(key).reset();
   }
 
   @autobind
   public select<S, T extends keyof A>(key: T, selector?: (s: Pick<A, T>[T]) => S): Observable<S> {
-    return this.getStore(key).select(selector);
+    return this.getStore<T>(key).select(selector);
   }
 
   @autobind
   public status<S, T extends keyof A>(key: T): Observable<RxQueryStatus<S>> {
-    return this.getStore(key).status();
+    return this.getStore<T>(key).status();
   }
 
   @autobind
@@ -132,21 +132,21 @@ export class RxNgQueryStore<A extends RxNgState> {
 
   @autobind
   public mutate<T extends keyof A>(key: T, payload: RxQueryMutateFn<Pick<A, T>[T]>): boolean {
-    return this.getStore(key).mutate(payload);
+    return this.getStore<T>(key).mutate(payload);
   }
 
   @autobind
   public fetch<T extends keyof A>(key: T, param?: any) {
-    return this.getStore(key).fetch(param);
+    return this.getStore<T>(key).fetch(param);
   }
 
   @autobind
   public reload<T extends keyof A>(key: T) {
-    return this.getStore(key).reload();
+    return this.getStore<T>(key).reload();
   }
 
   @autobind
   public disableRefetch<T extends keyof A>(key: T, disable: boolean) {
-    this.getStore(key).disableRefetch?.(disable);
+    this.getStore<T>(key).disableRefetch?.(disable);
   }
 }

@@ -24,7 +24,7 @@ export class AppTodoStore {
     return timer(1000).pipe(
       switchMap(() =>
         fromFetch('https://jsonplaceholder.typicode.com/todos', {
-          selector: (res) => (res.ok ? res.json() : throwError(new Error('nope'))),
+          selector: (res) => (res.ok ? res.json() : throwError(() => new Error('nope'))),
         }),
       ),
     );
