@@ -1,33 +1,38 @@
 import { Observable, Subject } from 'rxjs';
-import { RxQueryParam } from './rx-query.model';
+import { RxQueryOption } from './rx-query.model';
 
+interface TT {
+  id?: number;
+}
+
+type RequiredOption<A, T extends keyof RxQueryOption> = NonNullable<RxQueryOption<A>[T]>;
 /**
  * @description interface without optional
  * description can be found rx-query.model.ts
  **/
 export interface RxStoreOptionSchemed<A = unknown> {
-  key: string;
+  key: RequiredOption<A, 'key'>;
   initState: A;
-  isEqual: (a: any, b: any, nth?: number) => boolean;
-  retry: number;
-  retryDelay: number;
-  keepAlive: boolean;
-  query: (s?: unknown) => Observable<A> | Promise<A>;
-  prefetch?: RxQueryParam | null;
+  isEqual: RequiredOption<A, 'isEqual'>;
+  retry: RequiredOption<A, 'retry'>;
+  retryDelay: RequiredOption<A, 'retryDelay'>;
+  keepAlive: RequiredOption<A, 'keepAlive'>;
+  query: RequiredOption<A, 'query'>;
+  prefetch?: RequiredOption<A, 'prefetch'> | null;
 }
 
 export interface RxQueryOptionSchemed<A = unknown>
   extends Omit<RxStoreOptionSchemed<A>, 'isStaticStore'> {
-  refetchOnReconnect: boolean;
-  refetchOnEmerge: boolean;
-  refetchInterval: number;
-  caching: number;
+  refetchOnReconnect: RequiredOption<A, 'refetchOnReconnect'>;
+  refetchOnEmerge: RequiredOption<A, 'refetchOnEmerge'>;
+  refetchInterval: RequiredOption<A, 'refetchInterval'>;
+  caching: RequiredOption<A, 'caching'>;
   paramToCachingKey?: (p: any) => any;
-  staleTime: number;
-  refetchOnBackground: boolean;
-  dataEasing: boolean;
-  minValidReconnectTime: number;
-  minValidFocusTime: number;
+  staleTime: RequiredOption<A, 'staleTime'>;
+  refetchOnBackground: RequiredOption<A, 'refetchOnBackground'>;
+  dataEasing: RequiredOption<A, 'dataEasing'>;
+  minValidReconnectTime: RequiredOption<A, 'minValidReconnectTime'>;
+  minValidFocusTime: RequiredOption<A, 'minValidFocusTime'>;
 }
 
 export interface RxQueryNotifier {

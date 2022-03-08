@@ -47,7 +47,7 @@ export interface RxStoreOption<A = unknown> {
   /**
    * @description perform query with the construction of the store. should have param property
    **/
-  prefetch?: RxQueryParam;
+  prefetch?: Pick<RxQueryParam, 'param'>;
 
   /**
    * @description used to check cache-key and inside select
