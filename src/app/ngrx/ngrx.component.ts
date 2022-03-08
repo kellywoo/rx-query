@@ -1,12 +1,11 @@
 import { Component } from '@angular/core';
-import { RxQueryStatus } from 'rx-ng-query';
 import { AppUserStore } from './user.service';
 
 @Component({
   selector: 'my-app',
   template: `<h1>Todo List</h1>
     <ng-template
-      [rxNgSuspense]="profileStatus"
+      [rxNgSuspense]="profileStatus$ | async"
       [loadingTemplate]="loadingTemplate"
       [errorTemplate]="errorTemplate"
       let-data
@@ -32,11 +31,8 @@ import { AppUserStore } from './user.service';
 })
 export class NgRxComponent {
   showTodo = false;
-  profileStatus: RxQueryStatus<any> | null = null;
+  profileStatus$ = this.userService.selectUserStatus();
   constructor(private userService: AppUserStore) {
-    this.userService.selectUserStatus().subscribe((profileStatus) => {
-      this.profileStatus = profileStatus;
-    });
   }
 
   showError(err: Error) {

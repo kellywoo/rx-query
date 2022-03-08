@@ -1,5 +1,5 @@
 import { Component, OnDestroy } from '@angular/core';
-import { RxNgQueryStore, RxQueryStatus } from 'rx-ng-query';
+import { RxNgQueryStore } from 'rx-ng-query';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { USER_CACHE_TYPE } from '../user.service';
@@ -9,7 +9,8 @@ import { AppTodoStore } from './todo.service';
   selector: 'ngrx-todo',
   template: `<div>
     <h2>{{ name }}</h2>
-    <ng-template [rxNgSuspense]="todoItemStatus" [loadingTemplate]="loadingTemplate" let-data>
+    <ng-template [rxNgSuspense]="todoItemStatus$ | async"
+                 [loadingTemplate]="loadingTemplate" let-data>
       <ul>
         <li *ngFor="let item of data">
           <a (click)="showDetail(item.id)">{{ item.title }}</a>
@@ -37,17 +38,12 @@ import { AppTodoStore } from './todo.service';
   providers: [AppTodoStore],
 })
 export class NgrxTodoComponent implements OnDestroy {
-  todoItemStatus: RxQueryStatus<any> | null = null;
+  todoItemStatus$ = this.todoService
+    .selectTodoListStatus();
   todoItem: any;
   name = '';
   destroy$ = new Subject<void>();
   constructor(private todoService: AppTodoStore, private rxStore: RxNgQueryStore<any>) {
-    this.todoService
-      .selectTodoListStatus()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((todoItemStatus) => {
-        this.todoItemStatus = todoItemStatus;
-      });
     this.todoService
       .selectTodoItem()
       .pipe(takeUntil(this.destroy$))
