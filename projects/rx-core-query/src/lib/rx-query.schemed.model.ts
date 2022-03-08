@@ -5,19 +5,19 @@ import { RxQueryParam } from './rx-query.model';
  * @description interface without optional
  * description can be found rx-query.model.ts
  **/
-export interface RxStoreOptionSchemed<A, B = A> {
+export interface RxStoreOptionSchemed<A = unknown> {
   key: string;
   initState: A;
   isEqual: (a: any, b: any, nth?: number) => boolean;
   retry: number;
   retryDelay: number;
   keepAlive: boolean;
-  query: (s?: B) => Observable<A> | Promise<A>;
-  prefetch?: RxQueryParam<B> | null;
+  query: (s?: unknown) => Observable<A> | Promise<A>;
+  prefetch?: RxQueryParam | null;
 }
 
-export interface RxQueryOptionSchemed<A, B>
-  extends Omit<RxStoreOptionSchemed<A, B>, 'isStaticStore'> {
+export interface RxQueryOptionSchemed<A = unknown>
+  extends Omit<RxStoreOptionSchemed<A>, 'isStaticStore'> {
   refetchOnReconnect: boolean;
   refetchOnEmerge: boolean;
   refetchInterval: number;

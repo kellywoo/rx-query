@@ -35,4 +35,4 @@ export const getRxConstSettings = (() => {
   };
 })();
 
-export const defaultQuery = <A, B>(a?: B) => of(a as unknown as A);
+export const defaultQuery = <A>(a?: unknown) => of(a as A);

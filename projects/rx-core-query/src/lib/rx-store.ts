@@ -19,15 +19,15 @@ import { defaultQuery, getRxConstSettings, RxConst } from './rx-const';
 import { INIT_CACHE_KEY, RxState } from './rx-state';
 import { RxCache } from './rx-cache';
 
-export abstract class RxStoreAbstract<A = unknown, B = unknown> {
+export abstract class RxStoreAbstract<A = unknown> {
   protected abstract readonly key: string;
   protected abstract readonly initState: A;
   protected abstract readonly retry: number;
   protected abstract readonly retryDelay: number;
   protected abstract readonly RX_CONST: RxConst;
-  protected abstract readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
+  protected abstract readonly isEqual: RxStoreOptionSchemed<A>['isEqual'];
   protected abstract readonly cacheState: RxState;
-  protected abstract readonly response$: Subject<RxQueryResponse<A, B>>;
+  protected abstract readonly response$: Subject<RxQueryResponse<A>>;
 
   protected abstract fetched: boolean;
 
@@ -91,24 +91,24 @@ export abstract class RxStoreAbstract<A = unknown, B = unknown> {
   public abstract readonly disableRefetch: (disable: boolean) => void;
 }
 
-export class RxStore<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
+export class RxStore<A = unknown> extends RxStoreAbstract<A> {
   protected readonly key: string;
   protected readonly initState: A;
   protected readonly retry: number;
   protected readonly retryDelay: number;
-  protected readonly query: RxStoreOptionSchemed<A, B>['query'];
-  protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
+  protected readonly query: RxStoreOptionSchemed<A>['query'];
+  protected readonly isEqual: RxStoreOptionSchemed<A>['isEqual'];
   protected readonly RX_CONST: RxConst;
-  protected readonly response$: RxStoreAbstract<A, B>['response$'] = new Subject();
+  protected readonly response$: RxStoreAbstract<A>['response$'] = new Subject();
   protected readonly cacheState: RxState<A>;
   protected fetched = false;
 
-  private readonly trigger$: Subject<{ param: B; cache: RxCache<A> }> = new Subject();
+  private readonly trigger$: Subject<{ param: unknown; cache: RxCache<A> }> = new Subject();
   private readonly keepAlive: boolean;
   private readonly destroy$ = new Subject<undefined>();
 
   constructor(
-    options: RxQueryOption<A, B>,
+    options: RxQueryOption<A>,
     private notifiers: RxQueryNotifier,
     cacheState?: RxState<A>,
   ) {
@@ -141,7 +141,7 @@ export class RxStore<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
     this.trigger$
       .pipe(
         debounceTime(0), // prevent multi request for one
-        switchMap(({ param, cache }: { param: B; cache: RxCache<A> }) => {
+        switchMap(({ param, cache }: { param: unknown; cache: RxCache<A> }) => {
           let retryTimes = this.retry;
           const querySource = this.query(param);
           const query$ = querySource instanceof Observable ? querySource : from(querySource);
@@ -149,7 +149,7 @@ export class RxStore<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
             tap((res) => {
               cache.onSuccess(res);
               this.response$.next({
-                type: 'success' as RxQueryResponse<A, B>['type'],
+                type: 'success' as RxQueryResponse<A>['type'],
                 refetch: false,
                 data: res,
                 param,
@@ -162,7 +162,7 @@ export class RxStore<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
               } else {
                 cache.onError(err);
                 this.response$.next({
-                  type: 'error' as RxQueryResponse<A, B>['type'],
+                  type: 'error' as RxQueryResponse<A>['type'],
                   refetch: false,
                   data: err,
                   param,
@@ -181,7 +181,7 @@ export class RxStore<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
     return INIT_CACHE_KEY;
   }
 
-  private getDefaultOption(options: RxQueryOption<A, B>): RxStoreOptionSchemed<A, B> {
+  private getDefaultOption(options: RxQueryOption<A>): RxStoreOptionSchemed<A> {
     return {
       key: options.key,
       initState: options.initState,
@@ -194,7 +194,7 @@ export class RxStore<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
     };
   }
 
-  public readonly fetch = (payload?: B) => {
+  public readonly fetch = (payload?: unknown) => {
     this.fetched = true;
     const currentCache = this.cacheState.getCache(INIT_CACHE_KEY)!;
     currentCache.prepareFetching(payload);

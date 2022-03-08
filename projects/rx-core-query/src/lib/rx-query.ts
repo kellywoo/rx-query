@@ -30,10 +30,10 @@ import { INIT_CACHE_KEY, RxState } from './rx-state';
 import { RxCache } from './rx-cache';
 import { defaultQuery, getRxConstSettings, RxConst } from './rx-const';
 
-export const getDefaultRxQueryOption = <A = unknown, B = unknown>(
-  options: RxQueryOption<A, B>,
+export const getDefaultRxQueryOption = <A = unknown>(
+  options: RxQueryOption<A>,
   rxConst: RxConst,
-): RxQueryOptionSchemed<A, B> => {
+): RxQueryOptionSchemed<A> => {
   const {
     staleTime,
     defaultRetryDelay,
@@ -77,19 +77,19 @@ export const getDefaultRxQueryOption = <A = unknown, B = unknown>(
   };
 };
 
-export class RxQuery<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
+export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
   protected readonly key: string;
   protected readonly initState: Readonly<A>;
   protected readonly retry: number;
   protected readonly retryDelay: number;
-  protected readonly query: RxStoreOptionSchemed<A, B>['query'];
-  protected readonly isEqual: RxStoreOptionSchemed<A, B>['isEqual'];
+  protected readonly query: RxStoreOptionSchemed<A>['query'];
+  protected readonly isEqual: RxStoreOptionSchemed<A>['isEqual'];
   protected readonly RX_CONST: RxConst;
-  protected readonly response$: RxStoreAbstract<A, B>['response$'] = new Subject();
+  protected readonly response$: RxStoreAbstract<A>['response$'] = new Subject();
   protected readonly cacheState: RxState;
   protected fetched = false;
 
-  private readonly trigger$: Subject<{ refetch: boolean; cache: RxCache; param: B }> =
+  private readonly trigger$: Subject<{ refetch: boolean; cache: RxCache; param: unknown }> =
     new Subject();
   private readonly keepAlive: boolean;
   private readonly destroy$ = new Subject<undefined>();
@@ -109,7 +109,7 @@ export class RxQuery<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
   private minValidFocusTime = 0;
 
   constructor(
-    options: RxQueryOption<A, B>,
+    options: RxQueryOption<A>,
     private notifiers: RxQueryNotifier,
     cacheState?: RxState<A>,
   ) {
@@ -134,7 +134,7 @@ export class RxQuery<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
       paramToCachingKey,
       query,
       isEqual,
-    } = getDefaultRxQueryOption<A, B>(options, this.RX_CONST);
+    } = getDefaultRxQueryOption<A>(options, this.RX_CONST);
     this.key = key;
     this.query = query;
     this.initState = Object.freeze(initState) as A;
@@ -193,7 +193,7 @@ export class RxQuery<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
       .pipe(
         debounceTime(0), // prevent multi request for one
         switchMap(
-          ({ param, cache, refetch }: { param: B; cache: RxCache<A>; refetch: boolean }) => {
+          ({ param, cache, refetch }: { param: unknown; cache: RxCache<A>; refetch: boolean }) => {
             let retryTimes = this.retry;
             const querySource = this.query(param);
             const query$ = querySource instanceof Observable ? querySource : from(querySource);
@@ -203,7 +203,7 @@ export class RxQuery<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
                 this.lastSuccessTime = Date.now();
                 this.refetchInterval$.next(this.refetchInterval);
                 this.response$.next({
-                  type: 'success' as RxQueryResponse<A, B>['type'],
+                  type: 'success' as RxQueryResponse<A>['type'],
                   refetch,
                   data: res,
                   param,
@@ -219,7 +219,7 @@ export class RxQuery<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
                   }
                   this.refetchInterval$.next(this.refetchInterval);
                   this.response$.next({
-                    type: 'error' as RxQueryResponse<A, B>['type'],
+                    type: 'error' as RxQueryResponse<A>['type'],
                     refetch,
                     data: err,
                     param,
@@ -235,7 +235,7 @@ export class RxQuery<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
       .subscribe();
   }
 
-  private getCacheKey(param?: any) {
+  private getCacheKey(param?: unknown) {
     if (this.cacheState.max === 0) {
       return INIT_CACHE_KEY;
     }
@@ -303,7 +303,7 @@ export class RxQuery<A = unknown, B = unknown> extends RxStoreAbstract<A, B> {
     }
   }
 
-  public readonly fetch = (param?: B) => {
+  public readonly fetch = (param?: unknown) => {
     this.setRefetchStrategy(true);
     const cacheKey = this.getCacheKey(param);
     const cache = this.cacheState.createAndSwitch(cacheKey);

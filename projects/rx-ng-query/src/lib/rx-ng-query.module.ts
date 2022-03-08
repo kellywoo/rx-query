@@ -14,7 +14,7 @@ const ngQueryStoreProvider = {
       STORE = new RxNgQueryStore(config);
     }
     if (initSource) {
-      initSource.forEach((source: RxQueryOption<any, any>) => {
+      initSource.forEach((source: RxQueryOption) => {
         if (!STORE.has(source.key)) {
           STORE.registerStore(source);
         }
@@ -39,7 +39,7 @@ export class RxNgQueryModule {
   }
 
   static withInitStore(
-    source?: (...args: any[]) => RxQueryOption<any, any>[],
+    source?: (...args: any[]) => RxQueryOption[],
     deps?: any[],
   ): ModuleWithProviders<RxNgQueryModule> {
     return {

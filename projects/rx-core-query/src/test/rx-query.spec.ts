@@ -22,7 +22,7 @@ const notifier: RxQueryNotifier = {
 };
 
 const createRxQuery = (
-  params: RxQueryOption<any, any>,
+  params: RxQueryOption,
   option?: {
     notifiers?: RxQueryNotifier;
     cacheState?: RxState;
@@ -184,7 +184,7 @@ describe('RxQuery: retry', () => {
   it('RxQuery Error: retry works', () => {
     const param = {};
     const retry = 3;
-    const mockFn = jest.fn((m) => m);
+    const mockFn = jest.fn((m: any) => {});
     const query = (v: any) =>
       of(v).pipe(
         map((p) => {
@@ -204,7 +204,7 @@ describe('RxQuery: retry', () => {
   it('RxQuery Error: retry does not happen with 0', () => {
     const param = {};
     const retry = 0;
-    const mockFn = jest.fn((m) => m);
+    const mockFn = jest.fn((m: any) => m);
     const query = (v: any) =>
       of(v).pipe(
         map((p) => {

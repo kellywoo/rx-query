@@ -11,7 +11,7 @@ export class RxCache<A = any> {
   private status$;
   private stop$ = new Subject<void>();
   private origin?: { ts: number; data: A };
-  private param: any;
+  private param: unknown;
 
   constructor(public cacheKey: any, private initData: A) {
     this.data = initData;
@@ -25,7 +25,7 @@ export class RxCache<A = any> {
     );
   }
 
-  public getLatestParam(): { param: any } | null {
+  public getLatestParam(): { param: unknown } | null {
     return this.ts === 0 ? null : { param: this.param };
   }
 
@@ -41,7 +41,7 @@ export class RxCache<A = any> {
     return shallowEqualDepth(this.cacheKey, cacheKey, 1);
   }
 
-  public prepareFetching(param: any) {
+  public prepareFetching(param: unknown) {
     this.param = param;
     this.loading = true;
     this.error = null;

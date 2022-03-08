@@ -27,14 +27,14 @@ export type RxQueryStatus<A = unknown> = {
   untrustedData?: boolean;
 };
 
-export type RxQueryResponse<A = unknown, B = unknown> = {
+export type RxQueryResponse<A = unknown> = {
   type: 'error' | 'success';
   data: A | Error;
   refetch: boolean;
-  param: B;
+  param: unknown;
 };
 
-export interface RxStoreOption<A = unknown, B = unknown> {
+export interface RxStoreOption<A = unknown> {
   /**
    * @description store key
    **/
@@ -47,7 +47,7 @@ export interface RxStoreOption<A = unknown, B = unknown> {
   /**
    * @description perform query with the construction of the store. should have param property
    **/
-  prefetch?: RxQueryParam<B> | null;
+  prefetch?: RxQueryParam;
 
   /**
    * @description used to check cache-key and inside select
@@ -56,7 +56,7 @@ export interface RxStoreOption<A = unknown, B = unknown> {
   /**
    * @description query for fetch or any asynchronous operation
    **/
-  query?: null | ((s?: B) => Observable<A> | Promise<A>);
+  query?: null | ((s?: unknown) => Observable<A> | Promise<A>);
   /**
    * @description retry times for error
    **/
@@ -72,7 +72,7 @@ export interface RxStoreOption<A = unknown, B = unknown> {
   keepAlive?: boolean;
 }
 
-export interface RxQueryOption<A = unknown, B = unknown> extends RxStoreOption<A, B> {
+export interface RxQueryOption<A = unknown> extends RxStoreOption<A> {
   /**
    * @description ignore any refetch and cache strategy
    **/
@@ -125,4 +125,4 @@ export interface RxQueryOption<A = unknown, B = unknown> extends RxStoreOption<A
   minValidFocusTime?: number;
 }
 
-export type RxQueryParam<B = unknown> = { param?: B; refetch?: boolean };
+export type RxQueryParam = { param?: unknown; refetch?: boolean };

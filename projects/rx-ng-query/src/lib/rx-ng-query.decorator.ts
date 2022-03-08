@@ -4,16 +4,16 @@ import { RxQueryOption, RxStoreOption, RxQueryOptionSchemed } from '../../../rx-
 const INNER_DATA_KEY = Symbol();
 const INNER_STORE_KEY = Symbol();
 
-export function RxNgQuery(meta: Omit<RxQueryOption<any, any>, 'staticStore'>) {
+export function RxNgQuery<A = any>(meta: Omit<RxQueryOption<A>, 'staticStore'>) {
   return function (ClassRef: any, key: string, descriptor: TypedPropertyDescriptor<any>) {
-    const org = descriptor.value as RxQueryOptionSchemed<any, any>['query'];
+    const org = descriptor.value as RxQueryOptionSchemed['query'];
     if (typeof org !== 'function') {
       return descriptor;
     }
     ClassRef.constructor[INNER_DATA_KEY] = ClassRef.constructor[INNER_DATA_KEY] || [];
     ClassRef.constructor[INNER_DATA_KEY].push(key);
     ClassRef.constructor[INNER_STORE_KEY] = ClassRef.constructor[INNER_STORE_KEY] || [];
-    ClassRef.constructor[INNER_STORE_KEY].push(meta.key);
+    ClassRef.constructor[INNER_STORE_KEY].push(meta['key']);
     return {
       configurable: false,
       enumerable: false,
@@ -22,7 +22,7 @@ export function RxNgQuery(meta: Omit<RxQueryOption<any, any>, 'staticStore'>) {
         const applied = org.bind(this);
         globalStore.registerStore({ ...meta, query: applied });
         const bound: (s?: any) => void = (arg?: any) => {
-          return globalStore.fetch(meta.key, arg);
+          return globalStore.fetch(meta['key'], arg);
         };
         Object.defineProperty(this, key, {
           configurable: false,
@@ -42,9 +42,9 @@ export function RxNgQuery(meta: Omit<RxQueryOption<any, any>, 'staticStore'>) {
   };
 }
 
-export function RxNgStore(meta: RxStoreOption<any, any>) {
+export function RxNgStore<A = any>(meta: RxStoreOption<A>) {
   return function (ClassRef: any, key: string, descriptor: TypedPropertyDescriptor<any>) {
-    const org = descriptor.value as RxStoreOption<any, any>['query'];
+    const org = descriptor.value as RxStoreOption<A>['query'];
     if (typeof org !== 'function') {
       return descriptor;
     }

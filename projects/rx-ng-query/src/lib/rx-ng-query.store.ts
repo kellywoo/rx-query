@@ -21,7 +21,7 @@ export interface RxNgState {
 export type RxNgQueryStoreConfig = Partial<RxQueryNotifier & RxConst>;
 
 export class RxNgQueryStore<A extends RxNgState> {
-  private state: { [key in keyof A]?: RxStoreAbstract<unknown, unknown> } = {};
+  private state: { [key in keyof A]?: RxStoreAbstract } = {};
   private caches: { [key in keyof A]?: RxState } = {};
   private online$ = merge(fromEvent(window, 'online'), fromEvent(window, 'offline')).pipe(
     map((e) => e.type === 'online'),
@@ -74,7 +74,7 @@ export class RxNgQueryStore<A extends RxNgState> {
   }
 
   @autobind
-  public registerStore(options: RxQueryOption<any, any>) {
+  public registerStore(options: RxQueryOption) {
     const key = options.key as keyof A;
     if (this.state[key]) {
       console.warn(
@@ -90,7 +90,7 @@ export class RxNgQueryStore<A extends RxNgState> {
 
   private getStore<T extends keyof A>(key: T) {
     if (this.state[key]) {
-      return this.state[key] as RxStoreAbstract<Pick<A, T>[T], unknown>;
+      return this.state[key] as RxStoreAbstract<Pick<A, T>[T]>;
     }
     throw TypeError(`the store of key(${key}) seems not existing.`);
   }
