@@ -41,9 +41,7 @@ describe('getDefaultRxQueryOption', () => {
     defaultCaching: 0,
     defaultRetry: 2,
     defaultRetryDelay: 3,
-    defaultInterval: 24 * 3600,
     staleTime: 60,
-    minRefetchTime: 5,
     minValidReconnectTime: 12,
     minValidFocusTime: 60,
   };

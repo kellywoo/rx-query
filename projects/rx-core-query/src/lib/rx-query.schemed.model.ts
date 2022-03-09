@@ -1,11 +1,10 @@
 import { Observable, Subject } from 'rxjs';
 import { RxQueryOption } from './rx-query.model';
 
-interface TT {
-  id?: number;
-}
-
-type RequiredOption<A, T extends keyof RxQueryOption> = NonNullable<RxQueryOption<A>[T]>;
+type RequiredOption<A, T extends keyof RxQueryOption> = Exclude<
+  RxQueryOption<A>[T],
+  undefined | null
+>;
 /**
  * @description interface without optional
  * description can be found rx-query.model.ts

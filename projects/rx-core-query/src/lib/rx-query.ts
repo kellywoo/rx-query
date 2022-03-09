@@ -39,8 +39,6 @@ export const getDefaultRxQueryOption = <A = unknown>(
     defaultRetryDelay,
     defaultRetry,
     defaultCaching,
-    defaultInterval,
-    minRefetchTime,
     maxCaching,
     minValidFocusTime,
     minValidReconnectTime,
@@ -69,10 +67,7 @@ export const getDefaultRxQueryOption = <A = unknown>(
     minValidFocusTime: options.minValidFocusTime ?? minValidFocusTime,
     minValidReconnectTime: options.minValidReconnectTime ?? minValidReconnectTime,
     staleTime: options.staleTime ?? staleTime,
-    refetchInterval:
-      options.refetchInterval === 0
-        ? 0
-        : Math.max(options.refetchInterval || defaultInterval, minRefetchTime), // does not take 0
+    refetchInterval: options.refetchInterval ?? staleTime,
     caching: Math.min(Math.max(options.caching || defaultCaching, 0), maxCaching),
   };
 };

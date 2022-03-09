@@ -5,9 +5,7 @@ export interface RxConst {
   defaultCaching: number;
   defaultRetry: number;
   defaultRetryDelay: number;
-  defaultInterval: number;
   staleTime: number;
-  minRefetchTime: number;
   minValidReconnectTime: number;
   minValidFocusTime: number;
 }
@@ -17,9 +15,7 @@ const DEFAULT_VALUE: RxConst = Object.freeze({
   defaultCaching: 0,
   defaultRetry: 2,
   defaultRetryDelay: 3,
-  defaultInterval: 24 * 3600,
   staleTime: 60,
-  minRefetchTime: 2,
   minValidReconnectTime: 12,
   minValidFocusTime: 60,
 });

@@ -32,8 +32,7 @@ import { AppUserStore } from './user.service';
 export class NgRxComponent {
   showTodo = false;
   profileStatus$ = this.userService.selectUserStatus();
-  constructor(private userService: AppUserStore) {
-  }
+  constructor(private userService: AppUserStore) {}
 
   showError(err: Error) {
     console.log(err);

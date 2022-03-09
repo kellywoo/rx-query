@@ -9,8 +9,11 @@ import { AppTodoStore } from './todo.service';
   selector: 'ngrx-todo',
   template: `<div>
     <h2>{{ name }}</h2>
-    <ng-template [rxNgSuspense]="todoItemStatus$ | async"
-                 [loadingTemplate]="loadingTemplate" let-data>
+    <ng-template
+      [rxNgSuspense]="todoItemStatus$ | async"
+      [loadingTemplate]="loadingTemplate"
+      let-data
+    >
       <ul>
         <li *ngFor="let item of data">
           <a (click)="showDetail(item.id)">{{ item.title }}</a>
@@ -38,8 +41,7 @@ import { AppTodoStore } from './todo.service';
   providers: [AppTodoStore],
 })
 export class NgrxTodoComponent implements OnDestroy {
-  todoItemStatus$ = this.todoService
-    .selectTodoListStatus();
+  todoItemStatus$ = this.todoService.selectTodoListStatus();
   todoItem: any;
   name = '';
   destroy$ = new Subject<void>();
