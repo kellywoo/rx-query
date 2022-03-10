@@ -26,9 +26,10 @@ import {
 } from './rx-query.schemed.model';
 import { RxStoreAbstract } from './rx-store';
 import { shallowEqualDepth } from './rx-query.util';
-import { INIT_CACHE_KEY, RxState } from './rx-state';
+import { INIT_CACHE_KEY, RxCacheGroup } from './rx-cache.group';
 import { RxCache } from './rx-cache';
 import { defaultQuery, getRxConstSettings, RxConst } from './rx-const';
+import { RxCacheManager } from './rx-cache.manager';
 
 export const getDefaultRxQueryOption = <A = unknown>(
   options: RxQueryOption<A>,
@@ -53,7 +54,7 @@ export const getDefaultRxQueryOption = <A = unknown>(
     keepAlive: options.keepAlive || false,
     retry: options.retry ?? defaultRetry,
     retryDelay: options.retryDelay ?? defaultRetryDelay,
-    dataEasing: options.dataEasing || false,
+    cacheEasing: options.cacheEasing || false,
     paramToCachingKey:
       typeof options.paramToCachingKey === 'string'
         ? (() => {
@@ -61,13 +62,13 @@ export const getDefaultRxQueryOption = <A = unknown>(
             return (param: any) => param[key];
           })()
         : options.paramToCachingKey,
-    refetchOnEmerge: options.refetchOnEmerge !== false,
-    refetchOnReconnect: options.refetchOnReconnect !== false,
+    staleCheckOnFocus: options.staleCheckOnFocus !== false,
+    staleCheckOnReconnect: options.staleCheckOnReconnect !== false,
     refetchOnBackground: options.refetchOnBackground || false,
     minValidFocusTime: options.minValidFocusTime ?? minValidFocusTime,
     minValidReconnectTime: options.minValidReconnectTime ?? minValidReconnectTime,
     staleTime: options.staleTime ?? staleTime,
-    refetchInterval: options.refetchInterval ?? staleTime,
+    staleCheckOnInterval: options.staleCheckOnInterval ?? true,
     caching: Math.min(Math.max(options.caching || defaultCaching, 0), maxCaching),
   };
 };
@@ -81,7 +82,7 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
   protected readonly isEqual: RxStoreOptionSchemed<A>['isEqual'];
   protected readonly RX_CONST: RxConst;
   protected readonly response$: RxStoreAbstract<A>['response$'] = new Subject();
-  protected readonly cacheState: RxState;
+  protected readonly cacheGroup: RxCacheGroup;
   protected fetched = false;
 
   private readonly trigger$: Subject<{ refetch: boolean; cache: RxCache; param: unknown }> =
@@ -90,9 +91,9 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
   private readonly destroy$ = new Subject<undefined>();
 
   private readonly refetchInterval$ = new Subject<number>();
-  private readonly refetchInterval: number;
-  private readonly refetchOnReconnect: boolean;
-  private readonly refetchOnEmerge: boolean;
+  private readonly staleCheckOnInterval: boolean;
+  private readonly staleCheckOnReconnect: boolean;
+  private readonly staleCheckOnFocus: boolean;
   private readonly staleTime: number;
   private readonly refetchOnBackground: boolean;
   private readonly paramToCachingKey?: (p: any) => any;
@@ -106,7 +107,7 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
   constructor(
     options: RxQueryOption<A>,
     private notifiers: RxQueryNotifier,
-    cacheState?: RxState<A>,
+    private cacheManager: RxCacheManager,
   ) {
     super();
     this.RX_CONST = getRxConstSettings();
@@ -116,14 +117,14 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
       key,
       retry,
       retryDelay,
-      refetchOnReconnect,
-      refetchOnEmerge,
-      refetchInterval,
+      staleCheckOnReconnect,
+      staleCheckOnFocus,
+      staleCheckOnInterval,
       staleTime,
       refetchOnBackground,
       caching,
       keepAlive,
-      dataEasing,
+      cacheEasing,
       minValidFocusTime,
       minValidReconnectTime,
       paramToCachingKey,
@@ -133,35 +134,35 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
     this.key = key;
     this.query = query;
     this.initState = Object.freeze(initState) as A;
-    this.refetchInterval = refetchInterval * 1000;
+    this.staleCheckOnInterval = staleCheckOnInterval;
     this.retryDelay = retryDelay * 1000;
     this.staleTime = staleTime * 1000;
     this.retry = retry;
     this.refetchOnBackground = refetchOnBackground;
-    this.refetchOnReconnect = refetchOnReconnect;
-    this.refetchOnEmerge = refetchOnEmerge;
+    this.staleCheckOnReconnect = staleCheckOnReconnect;
+    this.staleCheckOnFocus = staleCheckOnFocus;
     this.keepAlive = keepAlive;
     this.minValidFocusTime = minValidFocusTime;
     this.minValidReconnectTime = minValidReconnectTime;
     this.isEqual = isEqual;
     this.paramToCachingKey = paramToCachingKey;
     this.subscribeStaleMode();
-    this.cacheState =
-      cacheState instanceof RxState && cacheState?.alive
-        ? cacheState
-        : new RxState<A>(
-            { max: caching, min: this.RX_CONST.defaultCaching, key: this.key },
-            this.initState,
-          );
+    const cacheGroup = cacheManager.getCache(this.key);
+    this.cacheGroup = cacheGroup || new RxCacheGroup<A>(this.key, this.initState);
     const cacheStateOption = {
       cacheKey: prefetch ? this.getCacheKey(prefetch.param) : INIT_CACHE_KEY,
-      dataEasing,
+      cacheEasing,
+      staleTime: this.staleTime,
+      max: caching,
     };
-    this.cacheState.connect(cacheStateOption);
+    this.cacheGroup.connect(cacheStateOption);
+    if (cacheGroup !== this.cacheGroup) {
+      this.cacheManager.setCache(this.key, this.cacheGroup);
+    }
     this.initQueryStream();
     if (prefetch) {
       this.fetch(prefetch.param);
-    } else if (this.cacheState === cacheState) {
+    } else if (this.cacheGroup === cacheGroup) {
       this.refetch();
     }
   }
@@ -196,7 +197,7 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
               tap((res: A) => {
                 cache.onSuccess(res);
                 this.lastSuccessTime = Date.now();
-                this.refetchInterval$.next(this.refetchInterval);
+                this.refetchInterval$.next(this.staleTime);
                 this.response$.next({
                   type: 'success' as RxQueryResponse<A>['type'],
                   refetch,
@@ -212,7 +213,7 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
                   if (!refetch) {
                     cache.onError(err);
                   }
-                  this.refetchInterval$.next(this.refetchInterval);
+                  this.refetchInterval$.next(this.staleTime);
                   this.response$.next({
                     type: 'error' as RxQueryResponse<A>['type'],
                     refetch,
@@ -231,7 +232,7 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
   }
 
   private getCacheKey(param?: unknown) {
-    if (this.cacheState.max === 0) {
+    if (this.cacheGroup.max === 0) {
       return INIT_CACHE_KEY;
     }
     if (this.paramToCachingKey) {
@@ -272,17 +273,17 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
       return;
     }
     this.refetchSubscription = new Subscription();
-    if (this.refetchOnReconnect) {
+    if (this.staleCheckOnReconnect) {
       this.refetchSubscription.add(
         this.subscribeRezoom(this.notifiers.online$, this.minValidReconnectTime),
       );
     }
-    if (this.refetchOnEmerge) {
+    if (this.staleCheckOnFocus) {
       this.refetchSubscription.add(
         this.subscribeRezoom(this.notifiers.windowActive$, this.minValidFocusTime),
       );
     }
-    if (this.refetchInterval > 0) {
+    if (this.staleCheckOnInterval) {
       this.refetchSubscription.add(
         this.refetchInterval$
           .pipe(
@@ -301,17 +302,19 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
   public readonly fetch = (param?: unknown) => {
     this.setRefetchStrategy(true);
     const cacheKey = this.getCacheKey(param);
-    const cache = this.cacheState.createAndSwitch(cacheKey);
+    const cache = this.cacheGroup.createAndSwitch(cacheKey);
     cache.prepareFetching(param);
     this.trigger$.next({ cache, param: param!, refetch: false });
   };
 
   private readonly refetch = () => {
     if (this.refetchDisabled || (this.isOnBackground && !this.refetchOnBackground)) {
-      this.refetchInterval$.next(this.refetchInterval);
+      // in case of failed by flags, then should check more frequently
+      this.refetchInterval$.next(Math.min(60 * 1000, this.staleTime));
       return;
     }
     const cache = this.getCurrentCache();
+    cache.checkStaleTime(this.staleTime);
     const state = cache.getCurrentData();
     const param = cache.getLatestParam();
     if (state.loading || !param) {
@@ -330,7 +333,7 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
 
   public readonly reset = () => {
     this.setRefetchStrategy(false);
-    this.cacheState.reset();
+    this.cacheGroup.reset();
   };
 
   public readonly disableRefetch = (disabled: boolean) => {
@@ -345,9 +348,9 @@ export class RxQuery<A = unknown> extends RxStoreAbstract<A> {
     this.trigger$.complete();
     this.response$.complete();
     if (this.keepAlive) {
-      this.cacheState.freeze();
+      this.cacheManager.freezeCache(this.key);
     } else {
-      this.cacheState.destroy();
+      this.cacheManager.removeCache(this.key);
     }
     if (this.notifiers.destroy$) {
       this.notifiers.destroy$.next(this.key);

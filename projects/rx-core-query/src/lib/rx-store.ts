@@ -16,8 +16,9 @@ import { RxQueryMutateFn, RxQueryOption, RxQueryResponse, RxQueryStatus } from '
 import { RxQueryNotifier, RxStoreOptionSchemed } from './rx-query.schemed.model';
 import { shallowEqualDepth } from './rx-query.util';
 import { defaultQuery, getRxConstSettings, RxConst } from './rx-const';
-import { INIT_CACHE_KEY, RxState } from './rx-state';
+import { INIT_CACHE_KEY, RxCacheGroup } from './rx-cache.group';
 import { RxCache } from './rx-cache';
+import { RxCacheManager } from './rx-cache.manager';
 
 export abstract class RxStoreAbstract<A = unknown> {
   protected abstract readonly key: string;
@@ -26,7 +27,7 @@ export abstract class RxStoreAbstract<A = unknown> {
   protected abstract readonly retryDelay: number;
   protected abstract readonly RX_CONST: RxConst;
   protected abstract readonly isEqual: RxStoreOptionSchemed<A>['isEqual'];
-  protected abstract readonly cacheState: RxState;
+  protected abstract readonly cacheGroup: RxCacheGroup;
   protected abstract readonly response$: Subject<RxQueryResponse<A>>;
 
   protected abstract fetched: boolean;
@@ -36,7 +37,7 @@ export abstract class RxStoreAbstract<A = unknown> {
   };
 
   public readonly select = <T>(selector?: (s: A) => T) => {
-    return this.cacheState.getState().pipe(
+    return this.cacheGroup.getState().pipe(
       map((state) => {
         return selector ? selector(state.data) : (state.data as unknown as T);
       }),
@@ -50,7 +51,7 @@ export abstract class RxStoreAbstract<A = unknown> {
 
   public readonly status: () => Observable<RxQueryStatus<A>> = () => {
     // whole
-    return this.cacheState.getState().pipe(distinctUntilChanged((a, b) => this.isEqual(a, b, 2)));
+    return this.cacheGroup.getState().pipe(distinctUntilChanged((a, b) => this.isEqual(a, b, 2)));
   };
 
   public readonly getInitData = () => {
@@ -58,15 +59,11 @@ export abstract class RxStoreAbstract<A = unknown> {
   };
 
   public getCurrentCache() {
-    return this.cacheState.getCurrentCache();
+    return this.cacheGroup.getCurrentCache();
   }
 
   public readonly mutate = (payload: RxQueryMutateFn<A>) => {
     return this.getCurrentCache().onMutate(payload);
-  };
-
-  public readonly getAliveCacheState = () => {
-    return this.cacheState?.alive ? this.cacheState : null;
   };
 
   public readonly reload = () => {
@@ -100,7 +97,7 @@ export class RxStore<A = unknown> extends RxStoreAbstract<A> {
   protected readonly isEqual: RxStoreOptionSchemed<A>['isEqual'];
   protected readonly RX_CONST: RxConst;
   protected readonly response$: RxStoreAbstract<A>['response$'] = new Subject();
-  protected readonly cacheState: RxState<A>;
+  protected readonly cacheGroup: RxCacheGroup<A>;
   protected fetched = false;
 
   private readonly trigger$: Subject<{ param: unknown; cache: RxCache<A> }> = new Subject();
@@ -110,7 +107,7 @@ export class RxStore<A = unknown> extends RxStoreAbstract<A> {
   constructor(
     options: RxQueryOption<A>,
     private notifiers: RxQueryNotifier,
-    cacheState?: RxState<A>,
+    private cacheManager: RxCacheManager,
   ) {
     super();
     this.RX_CONST = getRxConstSettings();
@@ -123,13 +120,15 @@ export class RxStore<A = unknown> extends RxStoreAbstract<A> {
     this.retry = retry;
     this.keepAlive = keepAlive;
     this.retryDelay = retryDelay;
-    this.cacheState =
-      cacheState instanceof RxState && cacheState?.alive
-        ? cacheState
-        : new RxState<A>({ max: 0, min: 0, key: this.key }, this.initState);
-    this.cacheState.connect({
+    const cacheGroup = cacheManager.getCache(this.key);
+    this.cacheGroup = cacheGroup || new RxCacheGroup<A>(this.key, this.initState);
+    if (cacheGroup !== this.cacheGroup) {
+      this.cacheManager.setCache(this.key, this.cacheGroup);
+    }
+    this.cacheGroup.connect({
       cacheKey: this.getCacheKey(),
-      dataEasing: false,
+      cacheEasing: false,
+      max: 0,
     });
     this.initQueryStream();
     if (prefetch) {
@@ -196,14 +195,14 @@ export class RxStore<A = unknown> extends RxStoreAbstract<A> {
 
   public readonly fetch = (payload?: unknown) => {
     this.fetched = true;
-    const currentCache = this.cacheState.getCache(INIT_CACHE_KEY)!;
+    const currentCache = this.cacheGroup.getCache(INIT_CACHE_KEY)!;
     currentCache.prepareFetching(payload);
     this.trigger$.next({ param: payload!, cache: currentCache });
   };
 
   public readonly reset = () => {
     this.fetched = false;
-    this.cacheState.reset();
+    this.cacheGroup.reset();
   };
 
   public readonly disableRefetch = () => {
@@ -216,9 +215,9 @@ export class RxStore<A = unknown> extends RxStoreAbstract<A> {
     this.trigger$.complete();
     this.response$.complete();
     if (this.keepAlive) {
-      this.cacheState.freeze();
+      this.cacheManager.freezeCache(this.key);
     } else {
-      this.cacheState.destroy();
+      this.cacheManager.removeCache(this.key);
     }
     if (this.notifiers.destroy$) {
       this.notifiers.destroy$.next(this.key);

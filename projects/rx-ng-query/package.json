@@ -20,7 +20,8 @@
   "author": "Kelly Woo <kelly.kh.woo@gmail.com>",
   "peerDependencies": {
     "@angular/common": "^13.2.0",
-    "@angular/core": "^13.2.0"
+    "@angular/core": "^13.2.0",
+    "rxjs": "~7.5.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"

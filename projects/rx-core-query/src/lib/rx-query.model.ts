@@ -80,15 +80,15 @@ export interface RxQueryOption<A = unknown> extends RxStoreOption<A> {
   /**
    * @description refetch on reconnect(if the staleTime has passed)
    **/
-  refetchOnReconnect?: boolean;
+  staleCheckOnReconnect?: boolean;
   /**
    * @description refetch on visibility changes(if the staleTime has passed)
    **/
-  refetchOnEmerge?: boolean;
+  staleCheckOnFocus?: boolean;
   /**
    * @description interval for refetch, if query performs before next routine, it reset the timer
    **/
-  refetchInterval?: number;
+  staleCheckOnInterval?: boolean;
 
   /**
    * @description automatically stops refetch on staleMode(window visibility hidden & offline)
@@ -114,7 +114,7 @@ export interface RxQueryOption<A = unknown> extends RxStoreOption<A> {
   /**
    * @description when cache target changes keep the current data.
    **/
-  dataEasing?: boolean;
+  cacheEasing?: boolean;
   /**
    * @description min valid reconnect time, if connection gets off and reconnection happens before it, does not consider reconnect event
    **/

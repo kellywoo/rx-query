@@ -9,7 +9,7 @@ export class RxCache<A = any> {
   private data: A;
   private untrustedData = true;
   private status$;
-  private stop$ = new Subject<void>();
+  private stop$ = new Subject<undefined>();
   private origin?: { ts: number; data: A };
   private param: unknown;
 
@@ -27,6 +27,12 @@ export class RxCache<A = any> {
 
   public getLatestParam(): { param: unknown } | null {
     return this.ts === 0 ? null : { param: this.param };
+  }
+
+  public checkStaleTime(staleTime: number) {
+    if (this.ts + staleTime < Date.now()) {
+      this.untrustedData = true;
+    }
   }
 
   public reset(data: A) {
@@ -98,12 +104,13 @@ export class RxCache<A = any> {
   }
 
   public unNotify() {
-    this.stop$.next();
+    this.stop$.next(undefined);
+    this.loading = false;
   }
 
   public destroy() {
     (this.data as unknown) = null;
-    this.stop$.next();
+    this.stop$.next(undefined);
     this.stop$.complete();
     this.stop$.unsubscribe();
     this.status$.complete();

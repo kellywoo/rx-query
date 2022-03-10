@@ -22,9 +22,9 @@ export class AppUserStore implements OnDestroy {
   @RxNgQuery({
     key: USER_CACHE_TYPE.user,
     prefetch: { param: null },
-    refetchInterval: 300,
-    refetchOnReconnect: true,
-    refetchOnEmerge: true,
+    staleCheckOnInterval: true,
+    staleCheckOnReconnect: true,
+    staleCheckOnFocus: true,
     initState: null,
   })
   fetchUser() {

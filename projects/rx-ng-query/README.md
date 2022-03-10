@@ -90,19 +90,19 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 <tbody>
 
 <tr>
-<th>refetchOnReconnect</th>
+<th>staleCheckOnReconnect</th>
 <td>boolean</td>
 <td><b>defaultValue: true </b><br />check staleTime has passed on network reconnection</td>
 </tr>
 
 <tr>
-<th>refetchOnEmerge</th>
+<th>staleCheckOnFocus</th>
 <td>boolean</td>
 <td><b>defaultValue: true </b><br />check staleTime has passed on window.visibilityChange => document.visibilityState === 'visible'. min switching time between on & off applied</td>
 </tr>
 
 <tr>
-<th>refetchInterval</th>
+<th>staleCheckOnInterval</th>
 <td>number</td>
 <td><b>defaultValue: 24 * 3600 (1 day) </b><br />
 0 for disable interval<br />
@@ -120,7 +120,7 @@ min value is 2(2seconds)<br />interval calls. restart on query successed or erre
 <tr>
 <th>refetchOnBackground</th>
 <td>boolean</td>
-<td><b>defaultValue: false </b><br />by default, refetch action by refetchInterval does not work when it is on the background mode(+ no network), with true, it ignores default and perform refetch</td>
+<td><b>defaultValue: false </b><br />by default, refetch action by staleCheckOnInterval does not work when it is on the background mode(+ no network), with true, it ignores default and perform refetch</td>
 </tr>
 
 <tr>

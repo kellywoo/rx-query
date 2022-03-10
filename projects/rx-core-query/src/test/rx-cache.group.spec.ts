@@ -1,21 +1,19 @@
-import { INIT_CACHE_KEY, RxState } from 'rx-core-query';
+import { INIT_CACHE_KEY, RxCacheGroup } from 'rx-core-query';
 import { RxCache } from '../lib/rx-cache';
 import SpyInstance = jest.SpyInstance;
 import { BehaviorSubject } from 'rxjs';
 
-describe('RxState basic', () => {
-  const option = { max: 5, min: 3, key: 'test' };
+describe('RxCacheGroup basic', () => {
+  const option = { max: 5, key: 'test' };
   const initState = {};
   let rxState!: any;
   beforeEach(() => {
-    rxState = new RxState(option, initState) as any;
+    rxState = new RxCacheGroup(option.key, initState) as any;
   });
 
   it('rxState basic props & methods', () => {
-    expect(rxState.min).toEqual(option.min);
-    expect(rxState.max).toEqual(option.max);
+    expect(rxState.max).toEqual(0);
     expect(rxState.key).toEqual(option.key);
-    expect(rxState.alive).toEqual(true);
     expect(rxState.initState).toBe(initState);
     expect(rxState.initCache.cacheKey).toEqual(INIT_CACHE_KEY);
     expect(rxState.initCache.data).toBe(initState);
@@ -26,9 +24,9 @@ describe('RxState basic', () => {
   it('rxState connect', () => {
     const cacheKey = { id: 1 };
     const listenToCache = jest.spyOn(rxState, 'listenToCache');
-    rxState.connect({ cacheKey, dataEasing: false });
+    rxState.connect({ cacheKey, cacheEasing: false, max: 3 });
     expect(rxState.currentCache.cacheKey).toEqual(cacheKey);
-    expect(rxState.dataEasing).toEqual(false);
+    expect(rxState.cacheEasing).toEqual(false);
     expect(rxState.cacheQueue.length).toEqual(1);
     expect(listenToCache).toHaveBeenCalledTimes(1);
     expect(listenToCache).toHaveBeenCalledWith(rxState.cacheQueue[0]);
@@ -36,7 +34,7 @@ describe('RxState basic', () => {
   });
 
   it('rxState create cache: cacheKey comparison with 1-depth shallow equal', () => {
-    rxState.connect({ cacheKey: INIT_CACHE_KEY, dataEasing: false });
+    rxState.connect({ cacheKey: INIT_CACHE_KEY, cacheEasing: false });
     const cache1 = rxState.createAndSwitch([]);
     const cache2 = rxState.createAndSwitch([]);
     const cache3 = rxState.createAndSwitch({ a: [] });
@@ -47,8 +45,8 @@ describe('RxState basic', () => {
   });
 });
 
-describe('RxState freeze & destroy', () => {
-  const option = { max: 5, min: 3, key: 'test' };
+describe('RxCacheGroup freeze & destroy', () => {
+  const option = { max: 5, key: 'test' };
   const initState = {};
   let rxState!: any;
   let cache: RxCache;
@@ -57,8 +55,8 @@ describe('RxState freeze & destroy', () => {
   let initCacheDestroy: SpyInstance;
   let state$: BehaviorSubject<any>;
   beforeEach(() => {
-    rxState = new RxState(option, initState) as any;
-    rxState.connect({ cacheKey: INIT_CACHE_KEY, dataEasing: false });
+    rxState = new RxCacheGroup(option.key, initState) as any;
+    rxState.connect({ cacheKey: INIT_CACHE_KEY, cacheEasing: false, max: option.max });
     cache = rxState.createAndSwitch([]);
     initCache = rxState.initCache;
     cacheDestroy = jest.spyOn(cache, 'destroy');
@@ -67,7 +65,6 @@ describe('RxState freeze & destroy', () => {
   });
   it('rxState freeze', () => {
     rxState.freeze();
-    expect(rxState.alive).toBe(true);
     expect(rxState.state$).toBeFalsy();
     expect(rxState.cacheQueue.length).toBe(1);
     expect(state$.closed).toBe(true);
@@ -77,7 +74,6 @@ describe('RxState freeze & destroy', () => {
 
   it('rxState destroy', () => {
     rxState.destroy();
-    expect(rxState.alive).toBe(false);
     expect(rxState.state$).toBeFalsy();
     expect(rxState.cacheQueue.length).toBe(0);
     expect(state$.closed).toBe(true);

@@ -3,8 +3,9 @@ import {
   RxQuery,
   RxQueryNotifier,
   RxQueryOption,
-  RxState,
+  RxCacheGroup,
   shallowEqualDepth,
+  RxCacheManager,
 } from 'rx-core-query';
 import { map, of, Subject, throwError } from 'rxjs';
 import { defaultQuery } from '../lib/rx-const';
@@ -23,18 +24,23 @@ const notifier: RxQueryNotifier = {
 
 const createRxQuery = (
   params: RxQueryOption,
-  option?: {
+  option: {
     notifiers?: RxQueryNotifier;
-    cacheState?: RxState;
+    cacheGroup?: RxCacheGroup;
     keepRefetchInterval?: boolean;
-  },
+  } = {},
 ) => {
-  const store = new RxQuery(params, option?.notifiers || notifier, option?.cacheState) as any;
-  if (!option?.keepRefetchInterval) {
+  const cacheManager = new RxCacheManager() as any;
+  if (option.cacheGroup) {
+    cacheManager.setCache(params.key, option.cacheGroup);
+  }
+  const store = new RxQuery(params, option.notifiers || notifier, cacheManager) as any;
+  if (!option.keepRefetchInterval) {
     store.refetchInterval$.complete();
   }
   return store as any;
 };
+
 describe('getDefaultRxQueryOption', () => {
   const rxconst = {
     maxCaching: 50,
@@ -52,7 +58,6 @@ describe('getDefaultRxQueryOption', () => {
       initState: {},
       retry: 0,
       retryDelay: 0,
-      refetchInterval: 0,
       minValidFocusTime: 0,
       minValidReconnectTime: 0,
     };
@@ -65,15 +70,15 @@ describe('getDefaultRxQueryOption', () => {
     expect(fixedOption.keepAlive).toBe(false);
     expect(fixedOption.retry).toBe(0);
     expect(fixedOption.retryDelay).toBe(0);
-    expect(fixedOption.dataEasing).toBe(false);
+    expect(fixedOption.cacheEasing).toBe(false);
     expect(fixedOption.paramToCachingKey).toBe(undefined);
-    expect(fixedOption.refetchOnEmerge).toBe(true);
-    expect(fixedOption.refetchOnReconnect).toBe(true);
+    expect(fixedOption.staleCheckOnFocus).toBe(true);
+    expect(fixedOption.staleCheckOnReconnect).toBe(true);
     expect(fixedOption.refetchOnBackground).toBe(false);
     expect(fixedOption.minValidFocusTime).toBe(0);
     expect(fixedOption.minValidReconnectTime).toBe(0);
     expect(fixedOption.staleTime).toBe(rxconst.staleTime);
-    expect(fixedOption.refetchInterval).toBe(0);
+    expect(fixedOption.staleCheckOnInterval).toBe(true);
     expect(fixedOption.caching).toBe(0);
   });
 
@@ -81,10 +86,9 @@ describe('getDefaultRxQueryOption', () => {
     const option = {
       key: 'store',
       initState: {},
-      refetchInterval: 2,
       paramToCachingKey: 'hello',
-      refetchOnEmerge: false,
-      refetchOnReconnect: false,
+      staleCheckOnFocus: false,
+      staleCheckOnReconnect: false,
       refetchOnBackground: false,
     };
     const fixedOption = getDefaultRxQueryOption(option, rxconst);
@@ -92,13 +96,13 @@ describe('getDefaultRxQueryOption', () => {
     expect(fixedOption.retry).toBe(2);
     expect(fixedOption.retryDelay).toBe(3);
     expect(typeof fixedOption.paramToCachingKey).toBe('function');
-    expect(fixedOption.refetchOnEmerge).toBe(false);
-    expect(fixedOption.refetchOnReconnect).toBe(false);
+    expect(fixedOption.staleCheckOnFocus).toBe(false);
+    expect(fixedOption.staleCheckOnReconnect).toBe(false);
     expect(fixedOption.refetchOnBackground).toBe(false);
     expect(fixedOption.minValidFocusTime).toBe(rxconst.minValidFocusTime);
     expect(fixedOption.minValidReconnectTime).toBe(rxconst.minValidReconnectTime);
     expect(fixedOption.staleTime).toBe(rxconst.staleTime);
-    expect(fixedOption.refetchInterval).toBe(5);
+    expect(fixedOption.staleCheckOnInterval).toBe(true);
     expect(fixedOption.caching).toBe(0);
   });
 });
@@ -141,7 +145,9 @@ describe('RxQuery options for state', () => {
     });
     jest.runAllTimers();
     store.destroy();
-    expect(store.cacheState.alive).toBe(true);
+    const originCache = store.cacheManager.getCache(defaultOption.key);
+    expect(originCache).toBeTruthy();
+    expect(originCache.destroyed).toBeFalsy();
 
     const store1 = createRxQuery(
       {
@@ -150,20 +156,24 @@ describe('RxQuery options for state', () => {
         prefetch: { param },
       },
       {
-        cacheState: store.cacheState,
+        cacheGroup: store.cacheGroup,
       },
     );
     expect(getCurrentStatus(store1).data).toBe(res);
     store1.destroy();
-    expect(store.cacheState.alive).toBe(false);
+    expect(store1.cacheManager.getCache(defaultOption.key)).toBeFalsy();
+    expect(originCache.destroyed).toBeTruthy();
 
     const store2 = createRxQuery(
       { ...defaultOption, keepAlive: false, prefetch: { param } },
       {
-        cacheState: store.cacheState,
+        cacheGroup: store.cacheGroup,
       },
     );
     expect(getCurrentStatus(store2).data).toBe(defaultOption.initState);
+    const newCache = store2.cacheManager.getCache(defaultOption.key);
+    expect(newCache).toBeTruthy();
+    expect(newCache.destroyed).toBeFalsy();
     store2.destroy();
   });
 });
@@ -372,7 +382,7 @@ describe('RxQuery: mutate', () => {
   });
 });
 
-describe('RxQuery: refetchInterval', () => {
+describe('RxQuery: staleCheckOnInterval', () => {
   beforeAll(() => {
     jest.useFakeTimers();
   });
@@ -386,10 +396,10 @@ describe('RxQuery: refetchInterval', () => {
   const option = {
     key: 'store',
     initState: {},
-    refetchInterval: 2,
+    staleCheckOnInterval: true,
     paramToCachingKey: 'hello',
-    refetchOnEmerge: false,
-    refetchOnReconnect: false,
+    staleCheckOnFocus: false,
+    staleCheckOnReconnect: false,
     refetchOnBackground: false,
     query,
   };
@@ -399,7 +409,7 @@ describe('RxQuery: refetchInterval', () => {
   });
 
   it('refetchInterval$ should be called with interval milliseconds after fetch', () => {
-    const store = createRxQuery({ ...option, refetchInterval: 3 });
+    const store = createRxQuery({ ...option, staleTime: 3 });
     const spy = jest.spyOn(store.refetchInterval$, 'next');
     store.fetch(param);
     jest.runAllTimers();
@@ -421,10 +431,9 @@ describe('RxQuery: refetch should not call query when', () => {
   const option = {
     key: 'store',
     initState: {},
-    refetchInterval: 2,
     paramToCachingKey: 'hello',
-    refetchOnEmerge: false,
-    refetchOnReconnect: false,
+    staleCheckOnFocus: false,
+    staleCheckOnReconnect: false,
     refetchOnBackground: false,
     query,
   };
@@ -434,7 +443,7 @@ describe('RxQuery: refetch should not call query when', () => {
   });
 
   it('refetchDisabled', () => {
-    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const store = createRxQuery({ ...option, staleTime: 60 });
     const triggerSpy = jest.spyOn(store.trigger$, 'next');
     const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
     store.fetch(param);
@@ -451,7 +460,7 @@ describe('RxQuery: refetch should not call query when', () => {
   });
 
   it('onBackground without forcedBackgroundRefetch', () => {
-    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const store = createRxQuery({ ...option, staleTime: 60 });
     const triggerSpy = jest.spyOn(store.trigger$, 'next');
     const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
     store.fetch(param);
@@ -468,7 +477,7 @@ describe('RxQuery: refetch should not call query when', () => {
   });
 
   it('isLoading for current cache', () => {
-    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const store = createRxQuery({ ...option, staleTime: 60 });
     const triggerSpy = jest.spyOn(store.trigger$, 'next');
     const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
     store.fetch(param);
@@ -485,7 +494,7 @@ describe('RxQuery: refetch should not call query when', () => {
   });
 
   it('not fetched cache', () => {
-    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const store = createRxQuery({ ...option, staleTime: 60 });
     const triggerSpy = jest.spyOn(store.trigger$, 'next');
     const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
 
@@ -496,7 +505,7 @@ describe('RxQuery: refetch should not call query when', () => {
   });
 
   it('still valid', () => {
-    const store = createRxQuery({ ...option, refetchInterval: 3, staleTime: 60 });
+    const store = createRxQuery({ ...option, staleTime: 60 });
     const triggerSpy = jest.spyOn(store.trigger$, 'next');
     const refetchIntervalSpy = jest.spyOn(store.refetchInterval$, 'next');
     store.fetch(param);

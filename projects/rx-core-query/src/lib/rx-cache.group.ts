@@ -5,38 +5,48 @@ import { shallowEqualDepth } from './rx-query.util';
 
 export const INIT_CACHE_KEY = Symbol();
 
-export class RxState<A = any> {
+export class RxCacheGroup<A = any> {
   private initCache: RxCache<A>;
   private currentCache!: RxCache<A>;
   private cacheQueue: RxCache<A>[] = [];
   private state$?: BehaviorSubject<RxQueryStatus<A>>;
-  private dataEasing = false;
+  private cacheEasing = false;
   private key: string;
-  public alive = true;
-  public readonly max: number;
-  public readonly min: number;
+  private staleTime = 0;
+  public max = 0;
+  public destroyed = false;
 
-  constructor(
-    { max, min, key }: { max: number; min: number; key: string },
-    private initState: Readonly<A>,
-  ) {
+  constructor(key: string, private initState: Readonly<A>) {
     this.initCache = new RxCache<A>(INIT_CACHE_KEY, this.initState);
     this.currentCache = this.initCache;
-    this.min = Math.floor(Math.max(min || 0, 0));
-    this.max = Math.floor(Math.max(max, this.min));
     this.key = key;
   }
 
-  public connect({ cacheKey, dataEasing }: { cacheKey: any; dataEasing: boolean }) {
+  public connect({
+    cacheKey,
+    cacheEasing,
+    staleTime,
+    max,
+  }: {
+    cacheKey: any;
+    cacheEasing: boolean;
+    staleTime?: number;
+    max: number;
+  }) {
     // cacheKey can be undefined.
-    this.checkAlive();
     const currentCache =
       cacheKey === INIT_CACHE_KEY
         ? this.initCache
         : this.find(cacheKey) || this.createCache(cacheKey);
-    this.dataEasing = dataEasing;
+
+    this.max = Math.max(max, 0);
+    this.staleTime = staleTime || 0;
+    this.cacheEasing = cacheEasing;
     this.state$ = new BehaviorSubject<RxQueryStatus<A>>(currentCache.getCurrentData());
     this.currentCache = currentCache;
+    if (staleTime !== undefined) {
+      this.currentCache.checkStaleTime(this.staleTime);
+    }
     this.listenToCache(this.currentCache);
   }
 
@@ -69,14 +79,7 @@ export class RxState<A = any> {
     return this.find(cacheKey);
   }
 
-  private checkAlive() {
-    if (!this.alive) {
-      throw new Error('this state is destroyed');
-    }
-  }
-
   private checkValidation() {
-    this.checkAlive();
     if (!this.state$) {
       throw new Error('connect it before use any methods');
     }
@@ -94,7 +97,7 @@ export class RxState<A = any> {
     cache.notification$
       .pipe(
         filter((state) => {
-          return Boolean(state.error || !this.dataEasing || state.ts !== 0);
+          return Boolean(state.error || !this.cacheEasing || state.ts !== 0);
         }),
       )
       .subscribe((state) => {
@@ -143,11 +146,11 @@ export class RxState<A = any> {
     this.state$?.complete();
     this.state$?.unsubscribe();
     this.state$ = undefined;
-    this.alive = false;
     this.initCache.destroy();
     this.cacheQueue.forEach((value) => {
       value.destroy();
     });
+    this.destroyed = true;
     this.cacheQueue = [];
   }
 }

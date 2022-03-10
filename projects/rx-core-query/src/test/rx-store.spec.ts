@@ -1,15 +1,37 @@
-import { RxQueryNotifier, RxStore, shallowEqualDepth } from 'rx-core-query';
+import {
+  RxCacheGroup,
+  RxCacheManager,
+  RxQueryNotifier,
+  RxQueryOption,
+  RxStore,
+  shallowEqualDepth,
+} from 'rx-core-query';
 import { map, of, Subject, throwError } from 'rxjs';
 import Expect = jest.Expect;
 
 const getCurrentStatus = (store: any) => {
   return store.getCurrentCache().getCurrentData();
 };
+
 const notifier: RxQueryNotifier = {
   destroy$: new Subject(),
   online$: new Subject(),
   windowActive$: new Subject(),
   isDev: true,
+};
+const createRxStore = (
+  params: RxQueryOption,
+  option: {
+    notifiers?: RxQueryNotifier;
+    cacheGroup?: RxCacheGroup;
+  } = {},
+) => {
+  const cacheManager = new RxCacheManager() as any;
+  if (option.cacheGroup) {
+    cacheManager.setCache(params.key, option.cacheGroup);
+  }
+  const store = new RxStore(params, option.notifiers || notifier, cacheManager) as any;
+  return store as any;
 };
 
 describe('RxStore default props', () => {
@@ -21,7 +43,7 @@ describe('RxStore default props', () => {
   };
 
   it('check default props & state', () => {
-    const store = new RxStore(option, notifier) as any;
+    const store = new RxStore(option, notifier, new RxCacheManager()) as any;
     const destroyNext = jest.spyOn(notifier.destroy$, 'next');
     expect(store.key).toBe(option.key);
     expect(store.initState).toBe(option.initState);
@@ -30,8 +52,8 @@ describe('RxStore default props', () => {
     expect(store.retry).toBe(0);
     expect(store.retryDelay).toBe(0);
     expect(typeof store.query).toBe('function');
-    expect(store.cacheState).toBeTruthy();
-    expect(store.getCurrentCache()).toBe(store.cacheState.initCache);
+    expect(store.cacheGroup).toBeTruthy();
+    expect(store.getCurrentCache()).toBe(store.cacheGroup.initCache);
     expect(getCurrentStatus(store).data).toBe(option.initState);
     store.destroy();
     expect(destroyNext).toHaveBeenCalledTimes(1);
@@ -60,7 +82,10 @@ describe('RxStore options for state', () => {
   });
 
   it('RxStore prefetch works', () => {
-    const store = new RxStore({ ...defaultOption, query, prefetch: { param } }, notifier) as any;
+    const store = createRxStore(
+      { ...defaultOption, query, prefetch: { param } },
+      { notifiers: notifier },
+    ) as any;
     jest.runAllTimers();
     expect(query).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenCalledWith(param);
@@ -69,29 +94,33 @@ describe('RxStore options for state', () => {
   });
 
   it('RxStore keepAlive works', () => {
-    const store = new RxStore(
+    const store = createRxStore(
       { ...defaultOption, query, keepAlive: true, prefetch: { param } },
-      notifier,
+      { notifiers: notifier },
     ) as any;
     jest.runAllTimers();
     store.destroy();
-    expect(store.cacheState.alive).toBe(true);
+    const originCache = store.cacheManager.getCache(defaultOption.key);
+    expect(originCache).toBeTruthy();
+    expect(originCache.destroyed).toBeFalsy();
 
-    const store1 = new RxStore(
+    const store1 = createRxStore(
       { ...defaultOption, keepAlive: false, prefetch: { param } },
-      notifier,
-      store.cacheState,
+      { notifiers: notifier, cacheGroup: store.cacheGroup },
     ) as any;
     expect(getCurrentStatus(store1).data).toBe(res);
     store1.destroy();
-    expect(store.cacheState.alive).toBe(false);
+    expect(store1.cacheManager.getCache(defaultOption.key)).toBeFalsy();
+    expect(originCache.destroyed).toBeTruthy();
 
-    const store2 = new RxStore(
+    const store2 = createRxStore(
       { ...defaultOption, keepAlive: false, prefetch: { param } },
-      notifier,
-      store.cacheState,
+      { notifiers: notifier, cacheGroup: store.cacheGroup },
     ) as any;
     expect(getCurrentStatus(store2).data).toBe(defaultOption.initState);
+    const newCache = store2.cacheManager.getCache(defaultOption.key);
+    expect(newCache).toBeTruthy();
+    expect(newCache.destroyed).toBeFalsy();
     store2.destroy();
   });
 });
@@ -118,7 +147,7 @@ describe('RxStore: retry', () => {
           throw Error('error');
         }),
       );
-    const store = new RxStore({ ...defaultOption, query, retry, retryDelay: 0 }, notifier) as any;
+    const store = createRxStore({ ...defaultOption, query, retry, retryDelay: 0 }) as any;
     store.fetch(param);
     jest.runAllTimers();
     expect(mockFn).toHaveBeenCalledTimes(retry + 1);
@@ -138,7 +167,7 @@ describe('RxStore: retry', () => {
           throw Error('error');
         }),
       );
-    const store = new RxStore({ ...defaultOption, query, retry, retryDelay: 0 }, notifier) as any;
+    const store = createRxStore({ ...defaultOption, query, retry, retryDelay: 0 }) as any;
     store.fetch(param);
     jest.runAllTimers();
     expect(mockFn).toHaveBeenCalledTimes(retry + 1);
@@ -181,7 +210,7 @@ describe('RxStore: fetch', () => {
       }
     };
 
-    const store = new RxStore({ ...option, query }, notifier);
+    const store = createRxStore({ ...option, query });
     const status: any[] = [];
     const select: any[] = [];
     const response: any[] = [];
@@ -266,7 +295,7 @@ describe('RxStore: mutate', () => {
   };
 
   it('change status by mutate', () => {
-    const store = new RxStore<{ id: number }>(option, notifier) as any;
+    const store = createRxStore(option) as any;
     const status: any[] = [];
     const select: any[] = [];
     store.getCurrentCache().untrustedData = false;

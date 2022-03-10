@@ -1,5 +1,5 @@
 import { Observable, Subject } from 'rxjs';
-import { RxQueryOption } from './rx-query.model';
+import { RxQueryOption, RxQueryParam } from './rx-query.model';
 
 type RequiredOption<A, T extends keyof RxQueryOption> = Exclude<
   RxQueryOption<A>[T],
@@ -17,19 +17,19 @@ export interface RxStoreOptionSchemed<A = unknown> {
   retryDelay: RequiredOption<A, 'retryDelay'>;
   keepAlive: RequiredOption<A, 'keepAlive'>;
   query: RequiredOption<A, 'query'>;
-  prefetch?: RequiredOption<A, 'prefetch'> | null;
+  prefetch?: Pick<RxQueryParam, 'param'> | null;
 }
 
 export interface RxQueryOptionSchemed<A = unknown>
   extends Omit<RxStoreOptionSchemed<A>, 'isStaticStore'> {
-  refetchOnReconnect: RequiredOption<A, 'refetchOnReconnect'>;
-  refetchOnEmerge: RequiredOption<A, 'refetchOnEmerge'>;
-  refetchInterval: RequiredOption<A, 'refetchInterval'>;
+  staleCheckOnReconnect: RequiredOption<A, 'staleCheckOnReconnect'>;
+  staleCheckOnFocus: RequiredOption<A, 'staleCheckOnFocus'>;
+  staleCheckOnInterval: RequiredOption<A, 'staleCheckOnInterval'>;
   caching: RequiredOption<A, 'caching'>;
   paramToCachingKey?: (p: any) => any;
   staleTime: RequiredOption<A, 'staleTime'>;
   refetchOnBackground: RequiredOption<A, 'refetchOnBackground'>;
-  dataEasing: RequiredOption<A, 'dataEasing'>;
+  cacheEasing: RequiredOption<A, 'cacheEasing'>;
   minValidReconnectTime: RequiredOption<A, 'minValidReconnectTime'>;
   minValidFocusTime: RequiredOption<A, 'minValidFocusTime'>;
 }

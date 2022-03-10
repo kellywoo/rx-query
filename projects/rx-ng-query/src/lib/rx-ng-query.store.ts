@@ -7,22 +7,19 @@ import {
   RxStore,
   RxStoreAbstract,
   RxQueryNotifier,
-  RxState,
   RxQueryMutateFn,
   RxQueryResponse,
   RxConst,
   getRxConstSettings,
+  RxCacheManager,
 } from '../../../rx-core-query.main';
 
-export interface RxNgState {
-  [key: string]: any;
-}
+export type RxNgState = Record<string, any>;
 
 export type RxNgQueryStoreConfig = Partial<RxQueryNotifier & RxConst>;
 
 export class RxNgQueryStore<A extends RxNgState> {
   private state: { [key in keyof A]?: RxStoreAbstract } = {};
-  private caches: { [key in keyof A]?: RxState } = {};
   private online$ = merge(fromEvent(window, 'online'), fromEvent(window, 'offline')).pipe(
     map((e) => e.type === 'online'),
     share(),
@@ -32,6 +29,7 @@ export class RxNgQueryStore<A extends RxNgState> {
     distinctUntilChanged(),
     share(),
   );
+  private cacheManager: RxCacheManager;
   private notifiers: RxQueryNotifier = Object.seal({
     destroy$: new Subject<string>(),
     online$: this.online$,
@@ -56,18 +54,11 @@ export class RxNgQueryStore<A extends RxNgState> {
   }
 
   constructor(config?: RxNgQueryStoreConfig) {
+    this.cacheManager = new RxCacheManager();
     this.updateConfig(config);
-    this.notifiers.destroy$!.subscribe((key) => {
+    this.notifiers.destroy$.subscribe((key: string) => {
       const store = this.state[key];
       if (store) {
-        const cache = store.getAliveCacheState();
-        if (cache) {
-          this.caches[key as keyof A] = cache;
-        } else {
-          if (this.caches[key]) {
-            delete this.caches[key];
-          }
-        }
         delete this.state[key];
       }
     });
@@ -82,10 +73,9 @@ export class RxNgQueryStore<A extends RxNgState> {
       );
       return;
     }
-    const cache = this.caches[key];
     this.state[key] = options.staticStore
-      ? new RxStore(options, this.notifiers, cache)
-      : new RxQuery(options, this.notifiers, cache);
+      ? new RxStore(options, this.notifiers, this.cacheManager)
+      : new RxQuery(options, this.notifiers, this.cacheManager);
   }
 
   private getStore<T extends keyof A>(key: T) {

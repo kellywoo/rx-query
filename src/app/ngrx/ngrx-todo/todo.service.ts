@@ -17,7 +17,7 @@ export class AppTodoStore {
     key: TODO_CACHE_TYPE.list,
     prefetch: { param: null },
     keepAlive: true,
-    refetchOnReconnect: true,
+    staleCheckOnReconnect: true,
     initState: [],
   })
   fetchTodoList() {
@@ -35,7 +35,7 @@ export class AppTodoStore {
     initState: null,
     caching: 30,
     keepAlive: true,
-    dataEasing: true,
+    cacheEasing: true,
     paramToCachingKey(num: number | null) {
       return num;
     },
